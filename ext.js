@@ -134,6 +134,56 @@ Ctx.prototype.play = async function(data){
 	vc.dispatcher.on('error', console.error);
 };
 
+Ctx.prototype.getGuildChannel = function( name){
+	for (const chan of this.guild.channels.cache){
+		const u = chan[1];
+		if (u.name == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.getChannel = function(name){
+	for (const chan of this.client.channels.cache){
+		const u = chan[1];
+		if (u.name == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.getMember = function(name){
+	for (const user of this.guild.members.cache){
+		const u = user[1];
+		if (u.nickname == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.findMember = function(name){
+	for (const user of this.guild.members.cache){
+		const u = user[1];
+		if ((u.nickname && u.nickname.toLowerCase().includes(name.toLowerCase())) || u.nickname == name || u.user.username.toLowerCase().includes(name.toLowerCase()) || u.user.username == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.getUser = function(name){
+	for (const user of this.client.users.cache){
+		const u = user[1];
+		if (u.username == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
 exports.CommandManager.prototype.process_commands = function(client, cfg, msg){
 	if (msg.content.startsWith(this.prefix)){
 		var cmd = msg.content.replace(this.prefix, "");
@@ -183,7 +233,6 @@ exports.CommandManager.prototype.asList = function(){
 
 exports.CommandManager.prototype.addCommand = function(name, data){
 	data.name = name;
-	console.log(data)
 	this.commands[name] = new Command(data);
 	const aliases = this.commands[name].aliases;
 	for (i=0;i<aliases.length;i++){

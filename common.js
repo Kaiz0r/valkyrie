@@ -62,7 +62,7 @@ exports.code = function(msg, lang){
 
 exports.space = function(base, count, next){
 	count -= base.length;
-	if(count < 0){count = 5}
+	if(count < 0){count = 5;}
 	const pre = " ".repeat(count);
 	return pre+next;
 };

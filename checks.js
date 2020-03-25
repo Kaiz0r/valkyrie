@@ -7,5 +7,5 @@ exports.isOwner = function(ctx){
 };
 
 exports.isWhitelisted = function(ctx){
-	return ctx.cfg.get('whitelist', []).contains(ctx.member.id);	
+	return ctx.cfg.get('whitelist', []).includes(ctx.member.id);	
 };

@@ -20,11 +20,10 @@ run in <channel> <command>
 
 covid
 
-radio station player
-command to import stations from athenas path
 */
-exports.set = {
-	help: "Sets a var.",
+
+exports.run = {
+	help: "Simulate command settings.",
 	group: "admin",
 	flags: ['$owner'],
 	execute: async function(ctx, args) {
@@ -36,10 +35,28 @@ exports.set = {
 	}
 };
 
+exports.set = {
+	help: "Sets a var.",
+	group: "admin",
+	flags: ['$owner'],
+	usage: "[key] [value]",
+	execute: async function(ctx, args) {
+		if (!checks.isOwner(ctx)){return;}
+		const key = args.shift();
+		var value = args.join(" ");
+
+		if (['undefined',  'nil', 'null', 'none'].includes(value)){value = undefined;}
+		if (['[]', 'new Array()'].includes(value)){value = [];}
+		ctx.cfg.set(key, value);
+		ctx.channel.send(`Setting **${key}** to **${value}** (${typeof(value)}).`);
+	}
+};
+
 exports.get = {
 	help: "Gets a var.",
 	group: "admin",
 	flags: ['$owner'],
+	usage: "[key] [value]",
 	execute: async function(ctx, args) {
 		if (!checks.isOwner(ctx)){return;}
 		ctx.reply(ctx.cfg.get(args.join (" ")));
@@ -50,9 +67,29 @@ exports.whitelist = {
 	help: "Manages whitelisted users.",
 	group: "admin",
 	flags: ['$owner'],
+	usage: "[member]",
 	execute: async function(ctx, args) {
-		if (!checks.isOwner(ctx)){return;}
-		ctx.reply(ctx.cfg.get(args.join (" ")));
+		var ls = ctx.cfg.get('whitelist', []);
+		
+		if (args.length == 0){
+			if (ls.length > 0){ ctx.channel.send(ls.join(", "));return; }else{ctx.channel.send("None.");return;}
+		}
+		
+		if (!checks.isOwner(ctx)){ctx.channel.send("Access denied.");return;}
+		var m = ctx.findMember(args.join(" "));
+		if (m == undefined){ctx.channel.send("Member not found."); return;}
+		
+		if (ls.includes(m.id)){
+			ls.splice (ls.indexOf(m.id), 1);
+			console.log(ls);
+			ctx.cfg.set('whitelist', ls);
+			ctx.channel.send(`De-whitelisted ${m}.`);
+		}else{
+			ls.push(m.id);
+			console.log(ls);
+			ctx.cfg.set('whitelist', ls);
+			ctx.channel.send(`Whitelisted ${m}.`);
+		}
 	}
 };
 
@@ -60,6 +97,7 @@ exports.reload = {
 	help: "Reloads extensions",
 	group: "admin",
 	flags: ['$owner'],
+	usage: "[optional: module]",
 	execute: async function(ctx, args) {
 		if (!checks.isOwner(ctx)){return;}
 		if (args.length == 0){
@@ -365,7 +403,7 @@ exports.lua = {
 	flags: ['$whitelist'],
 	usage: ['[code]'],
 	execute: async function(ctx, args) {
-		if (!checks.isWhitelisted(ctx)){return;}
+		if (!checks.isWhitelisted(ctx)){ctx.channel.send("Access denied.");return;}
 		args = args.join(" ");
 		args = args.replace("```lua", "");
 		args = args.replace("```", "");
@@ -406,7 +444,7 @@ exports.js = {
 	flags: ['$whitelist'],
 	usage: ['[code]'],
 	execute: async function(ctx, args) {
-		if (!checks.isWhitelisted(ctx)){return;}
+		if (!checks.isWhitelisted(ctx)){ctx.channel.send("Access denied.");return;}
 		args = args.join(" ");
 		args = args.replace("```js", "");
 		args = args.replace("```", "");
