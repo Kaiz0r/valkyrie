@@ -3,8 +3,8 @@ var common = require('./common.js');
 
 /*
  == FRAMEWORK ==
-grouping for commands
-used for the help listing, which should just by group
+cooldowns
+keep timestamps of executions in the manager to match against
 */
 
 function nocache(module) {
@@ -43,6 +43,21 @@ function Ctx(cman, client, message, cfg) {
 	this.reply = message.reply;
 	this.commands = cman;
 }
+Ctx.prototype.invoke = async function(command, args){
+	console.log("Running..")
+	await this.commands.run(command, this, args);
+};
+Ctx.prototype.clone = async function(){
+	var ctx = new Ctx(this.commands, this.client, this.msg, this.cfg);
+	return ctx;
+};
+
+Ctx.prototype.newCtx = async function(msg){
+	var ctx = new Ctx(this.commands, this.client, msg, this.cfg);
+	return ctx;
+};
+
+
 
 function VoiceManager(){};
 var vm = new VoiceManager();
@@ -144,6 +159,16 @@ Ctx.prototype.getGuildChannel = function( name){
 	return undefined;
 };
 
+Ctx.prototype.FindGuildChannel = function( name){
+	for (const chan of this.guild.channels.cache){
+		const u = chan[1];
+		if (u.name.includes(name) || u.name == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
 Ctx.prototype.getChannel = function(name){
 	for (const chan of this.client.channels.cache){
 		const u = chan[1];
@@ -187,7 +212,7 @@ Ctx.prototype.getUser = function(name){
 exports.CommandManager.prototype.process_commands = function(client, cfg, msg){
 	if (msg.content.startsWith(this.prefix)){
 		var cmd = msg.content.replace(this.prefix, "");
-		var args = cmd.split(" ");
+		var args = cmd.ssplit();
 		var command = args.shift();
 		var ctx = new Ctx(this, client, msg, cfg);
 		try {
@@ -263,9 +288,9 @@ exports.CommandManager.prototype.getCommand = function(name){
 	return this.commands[name];
 };
 
-exports.CommandManager.prototype.run = function(name, ctx, args){
+exports.CommandManager.prototype.run = async function(name, ctx, args){
 	if (this.commands[name] != undefined){
-		this.commands[name].execute(ctx, args);
+		await this.commands[name].execute(ctx, args);
 	}else if (this.aliasMap[name] != undefined){
 		this.run(this.aliasMap[name], ctx, args);
 	}

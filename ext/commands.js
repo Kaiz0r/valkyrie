@@ -20,6 +20,7 @@ run in <channel> <command>
 
 covid
 
+in help, if command has flags for $owner, $admin, $whitelist, run the check on executor to know if it should show
 */
 
 exports.run = {
@@ -28,10 +29,30 @@ exports.run = {
 	flags: ['$owner'],
 	execute: async function(ctx, args) {
 		if (!checks.isOwner(ctx)){return;}
-		const key = args.shift();
-		const value = args.join(" ");
-		ctx.cfg.set(key, value);
-		ctx.channel.send(`Setting ${key} to ${value}.`);
+		const mode = args.shift();
+		const target = args.shift();
+		const command = args.shift();
+		const cargs = args;
+
+		ctx.channel.send(`Will run \`${command}: ${cargs}\` ${mode} ${target}`);
+
+		if (mode == "as"){
+			const m = ctx.findMember(target);
+			var n = await ctx.newCtx(ctx.message);
+			n.member = m;
+			await n.invoke(command, cargs);
+		}else if ( mode == "in" ){
+			
+		}
+	}
+};
+
+exports.debug = {
+	help: "Debugging properties.",
+	group: "admin",
+	flags: ['$hidden'],
+	execute: async function(ctx, args) {
+		ctx.channel.send(`${ctx.member}\n${args}`);
 	}
 };
 

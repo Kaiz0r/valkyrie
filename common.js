@@ -13,8 +13,37 @@ var fnProto = Function.prototype,
 if (Object.defineProperty) Object.defineProperty(fnProto, 'docString', {get: docString});
 else if (fnProto.__defineGetter__) fnProto.__defineGetter__('docString', docString);
 else fnProto.docString = '';
-
 })();
+
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+Array.prototype.cut = function(target){	this.splice (this.indexOf(target), 1); };
+String.prototype.ssplit = function() { return exports.ssplit(this); };
+String.prototype.zp = function(n) { return '0'.times(n - this.length) + this; };
+String.prototype.reverse = function() { return this.split('').reverse().join(''); };
+Number.prototype.zp = function(n) { return this.toString().zp(n); };
+Number.prototype.truncate = function(n){return Math.round(this * Math.pow(10, n)) / Math.pow(10, n);};
+
+exports.ssplit = function(s){
+	var myRegexp = /[^\s"]+|"([^"]*)"/gi;
+	var myArray = [];
+
+	do {
+		//Each call to exec returns the next regex match as an array
+		var match = myRegexp.exec(s);
+		if (match != null)
+		{
+			//Index 1 in the array is the captured group if it exists
+			//Index 0 is the matched text, which we use if no captured group exists
+			myArray.push(match[1] ? match[1] : match[0]);
+		}
+	} while (match != null);
+	
+	return myArray;
+};
 
 exports.ConfigManager = function(path){
 	if (path == undefined){ this.path = "config.json"; }

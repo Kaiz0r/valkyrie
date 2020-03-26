@@ -14,12 +14,6 @@ const prefix = cfg.get('prefix', '$');
 const token = cfg.get('token');
 
 var cman = new ext.CommandManager(prefix);
-Array.prototype.remove = function(from, to) {
-  var rest = this.slice((to || from) + 1 || this.length);
-  this.length = from < 0 ? this.length + from : from;
-  return this.push.apply(this, rest);
-};
-
 
 client.on('ready', () => {
 	print("Running Node ".rainbow+process.version.rainbow, tag="info");
