@@ -1,6 +1,7 @@
 const fs = require('fs');
-var methods = {};
 var moment = require('moment');
+const {execSync} = require('child_process');
+
 
 (function(){
 
@@ -27,17 +28,31 @@ String.prototype.reverse = function() { return this.split('').reverse().join('')
 Number.prototype.zp = function(n) { return this.toString().zp(n); };
 Number.prototype.truncate = function(n){return Math.round(this * Math.pow(10, n)) / Math.pow(10, n);};
 
+exports.Talkfilters = {
+	valid: ['austro', 'b1ff', 'brooklyn', 'chef', 'cockney', 'drawl', 'dubya', 'fudd', 'funetak', 'jethro', 'jive', 'kraut', 'pansy', 'pirate', 'postmodern', 'redneck', 'valspeak', 'warez'],
+	run: function(filter, text){
+		if(this.valid.includes(filter)){
+			const out = exports.execute(`echo "${text}"|${filter}`);
+			console.log(`out ${out} (${typeof(out)})`);
+
+			return out;
+		}
+		return `Filter ${filter} not in list.`;
+	}
+};
+exports.execute = function(command, callback){
+    //exec(command, function(error, stdout, stderr){ callback(stdout); });
+	return execSync(command, { encoding: 'utf8'}).toString();
+};
+
 exports.ssplit = function(s){
 	var myRegexp = /[^\s"]+|"([^"]*)"/gi;
 	var myArray = [];
 
 	do {
-		//Each call to exec returns the next regex match as an array
 		var match = myRegexp.exec(s);
 		if (match != null)
 		{
-			//Index 1 in the array is the captured group if it exists
-			//Index 0 is the matched text, which we use if no captured group exists
 			myArray.push(match[1] ? match[1] : match[0]);
 		}
 	} while (match != null);
@@ -96,6 +111,10 @@ exports.space = function(base, count, next){
 	return pre+next;
 };
 
+exports.echo = function(message, tag="none", timestamp=false){
+	exports.print(mesage, tag, timestamp);
+};
+
 exports.print = function(message, tag="none", timestamp=true){
 	ts = "";
 	if (timestamp){
@@ -114,5 +133,5 @@ exports.print = function(message, tag="none", timestamp=true){
 	}else{
 		console.log(ts+message);
 	}
-}
+};
 

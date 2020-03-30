@@ -20,8 +20,26 @@ run in <channel> <command>
 
 covid
 
+echo command that lets it say a message in any channel
 in help, if command has flags for $owner, $admin, $whitelist, run the check on executor to know if it should show
 */
+
+exports.talkfilter = {
+	help: "Pass text through GNU Talkfilters.",
+	aliases: ['tf'],
+	group: "fun",
+	execute: async function(ctx, args) {
+		if (args.length == 0){args = ['ls']}
+		const filter = args.shift();
+		if (filter == "ls"){
+			ctx.channel.send(common.Talkfilters.valid.join(", "));
+			return;
+		}
+		const f = common.Talkfilters.run(filter, args.join(" "));
+		console.log(`f ${f}`);
+		ctx.channel.send(f);
+	}
+};
 
 exports.run = {
 	help: "Simulate command settings.",
@@ -136,15 +154,32 @@ exports.help = {
 	flags: ['$hidden'],
 	execute: async function(ctx, args) {
 		if (args.length != 0){
-			const target = ctx.commands.commands[args[0]];
+			var target = ctx.commands.commands[args[0]];
+
+			if (target == undefined){
+				for (const c of Object.keys(ctx.commands.commands)){
+					const com = ctx.commands.commands[c];
+
+					if (com.aliases.includes(args[0])){
+						target = com;
+						break;
+					}
+				}
+			}
 			if (target == undefined){
 				ctx.channel.send(`Command ${args[0]} not found.`);
 			}else{
-				var output = "["+args[0].toUpperCase()+"]";
+				var output = "["+target.name.toUpperCase()+"]";
 				
 				if (target.group != undefined){output += "\nGroup: "+target.group;}
+
+				if (target.aliases.length > 0){
+					const al = target.name+"|"+target.aliases.join("|");
+					output += "\nUsage: "+ctx.commands.prefix+"["+al+"] ";
+				}else{
+					output += "\nUsage: "+ctx.commands.prefix+target.name.toLowerCase()+" ";
+				}
 				
-				output += "\nUsage: "+ctx.commands.prefix+args[0].toLowerCase()+" ";
 				if (target.usage){output += target.usage;}
 				
 				if (target.help){output += "\n"+target.help;}

@@ -9,3 +9,8 @@ exports.isOwner = function(ctx){
 exports.isWhitelisted = function(ctx){
 	return ctx.cfg.get('whitelist', []).includes(ctx.member.id);	
 };
+
+// TODO's
+exports.isGuild = function(ctx){};
+exports.isInChannel = function(ctx, channel){};
+exports.isInGuild = function(ctx, guild){};
