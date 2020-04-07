@@ -9,6 +9,7 @@ const luaEnv = luaState.createEnv();
 var needle = require('needle');
 const cheerio = require('cheerio');
 const checks = require('../checks.js');
+const nc = require('../netcrawler.js');
 /*
  = TODO =
 
@@ -22,22 +23,114 @@ covid
 
 echo command that lets it say a message in any channel
 in help, if command has flags for $owner, $admin, $whitelist, run the check on executor to know if it should show
+
+youtube command, using the same search feature as play
+
+netcrawler lib for JS
+
+hunger games module
 */
 
-exports.talkfilter = {
-	help: "Pass text through GNU Talkfilters.",
-	aliases: ['tf'],
+exports.whois = {
+	help: "IP information lookup",
+	aliases: ['ip'],
+	group: "utility",
+	usage: "[IP Address]",
+	execute: async function(ctx, args) {
+		if (args.length == 0){ctx.channel.send("IP required."); return;}
+		await nc.Whois(args[0], function(data){
+			for (const c of Object.keys(data)){
+				const loc = data[c];
+
+			}	
+		});
+	
+	}
+};
+
+exports.covid = {
+	help: "Covid lookup.",
+	aliases: ['covid19', 'corona', 'ncov'],
+	group: "utility",
+	usage: "[search]",
+	execute: async function(ctx, args) {
+		await nc.Covid(async function(data){
+			const em = new discord.MessageEmbed();
+			var total = 0;
+			var total_cases = 0;
+			var total_deaths = 0;
+			var total_recov = 0;
+			var total_tests = 0;
+			var total_sources = [];
+			
+			//console.log(data);
+			if(args.length == 0){
+			}else{
+				const search = args.join(" ");
+				for (const c of Object.keys(data)){
+					const loc = data[c];
+					if(loc.name.lower().includes(search.lower())){
+						//console.log(loc)
+						total += 1;
+						var out = `There are ${loc.cases} confirmed cases`;
+						if (loc.population != undefined){out += ` out of a population of ${loc.population}`;}
+						if (loc.tested != undefined){out += `, with ${loc.tested} citizens tested`;}
+						out += ".";
+
+						if (loc.deaths != undefined) {out += ` There has been ${loc.deaths} deaths recorded`;}
+						if (loc.recovered != undefined) {out += ` with ${loc.recovered} recoveries`;}
+						if (!out.endsWith("."))
+						out += ".";
+						
+						if (loc.sources != undefined){
+							out += `\n**Source: ${loc.sources[0].name} (${loc.sources[0].url})`;
+
+							if (!total_sources.includes(`${loc.sources[0].name} (${loc.sources[0].url})`)){
+								total_sources.push(`${loc.sources[0].name} (${loc.sources[0].url})`);
+							}
+						}
+						
+						total_cases += common.defaultNum(loc.cases);
+						total_deaths += common.defaultNum(loc.deaths);
+						total_recov += common.defaultNum(loc.recovered);
+						total_tests += common.defaultNum(loc.tested);
+
+
+						em.addField(loc.name, out, false);
+					}
+
+				}
+
+				if (total == 0){
+					ctx.channel.send("No results found.");
+					return;
+				}
+				if (total <= 10){
+					ctx.channel.send(em);
+				}
+				if (total > 10){
+					const n = new discord.MessageEmbed()
+						  .addField(`Statistics Gathered for ${search}`, `Using all the gathered data from that search, with ${total} locations, there has been ${total_cases} cases out of ${total_tests.as("unknown")} people tested, with ${total_deaths.as("unknown")} deaths and ${total_recov.as("unknown")} recoveries.`);
+					
+					if(total_sources.length > 0 && total_sources.length < 10){
+						n.addField("Sources", total_sources.join("\n"));
+					}
+
+					if(total_sources.length >= 10){n.addField("Sources", `Various ${total_sources.length} sources.`);}
+					
+					ctx.channel.send(n);
+				}
+			}			
+		});
+	}
+};
+
+exports.youtube = {
+	help: "Searches youtube.",
+	aliases: ['yt'],
 	group: "fun",
 	execute: async function(ctx, args) {
-		if (args.length == 0){args = ['ls']}
-		const filter = args.shift();
-		if (filter == "ls"){
-			ctx.channel.send(common.Talkfilters.valid.join(", "));
-			return;
-		}
-		const f = common.Talkfilters.run(filter, args.join(" "));
-		console.log(`f ${f}`);
-		ctx.channel.send(f);
+
 	}
 };
 
@@ -309,14 +402,6 @@ exports.dogfact = {
 		});		
 	}
 };
-
-exports.lyrics = {
-	help: "",
-	group: "wip",
-	aliases: [],
-	execute: async function(ctx, args) {	
-	}
-};
 	
 exports.dog2 = {
 	help: "",
@@ -463,9 +548,9 @@ exports.lua = {
 		args = args.join(" ");
 		args = args.replace("```lua", "");
 		args = args.replace("```", "");
-		
-		const luaScript = luaEnv.parse(args);
-		
+		console.log(`args ${args}`);
+		const em = new discord.MessageEmbed();
+
 		var intercept = require("intercept-stdout"),
 			captured_text = "";
 
@@ -473,21 +558,22 @@ exports.lua = {
 			captured_text += txt;
 		});
 		
-		const returnValue = luaScript.exec();
+		let returnValue = undefined;
 		
+		try{
+		returnValue = luaEnv.parse(args).exec();
+		}catch(err){returnValue = `Error! ${err}`;}
+
 		unhook_intercept();
 
-		if (captured_text == ""){captured_text = "undefined";}
+		if (captured_text != ""){em.addField("Captured Test", "```\n"+captured_text+"\n```" );}
+		if (returnValue != undefined){em.addField("Returned", "```\n"+returnValue+"\n```" );}
+		
+		em.setAuthor(ctx.member.nickname, ctx.member.user.avatarURL(), '');
+		em.setColor('#0099ff');
+		em.setTimestamp();
 
-		const em = new discord.MessageEmbed()
-			  .setAuthor(ctx.member.nickname, ctx.member.user.avatarURL(), '')
-			  .setColor('#0099ff')
-			  .setTimestamp()
-			  .addFields(
-				  { name: 'Captured Text', value: "```"+captured_text+"```" },
-				  { name: "Returned", value: "```"+returnValue+"```" },
-			  );
-
+		if (captured_text == "" && returnValue == undefined) { ctx.channel.send("No data returned."); return;}
 		ctx.channel.send(em);
 	}
 };
@@ -508,6 +594,7 @@ exports.js = {
 			ctx.channel.send("```Requires code to execute.```");
 		}else{
 			try {
+				const em = new discord.MessageEmbed();
 				var intercept = require("intercept-stdout"),
 					captured_text = "";
 				var unhook_intercept = intercept(function(txt) {
@@ -517,14 +604,12 @@ exports.js = {
 				if (evaled instanceof Promise) evaled = await evaled;
 				unhook_intercept();
 				if (captured_text == ""){captured_text = "undefined";}
-				const em = new discord.MessageEmbed()
-					  .setAuthor(ctx.member.nickname, ctx.member.user.avatarURL(), '')
-					  .setColor('#0099ff')
-					  .setTimestamp()
-					  .addFields(
-						  { name: 'Captured Text', value: "```"+captured_text+"```" },
-						  { name: "Returned", value: "```"+evaled+"```" },
-					  );
+				
+				em.setAuthor(ctx.member.nickname, ctx.member.user.avatarURL(), '');
+				em.setColor('#0099ff');
+				em.setTimestamp();
+				if (captured_text != ""){em.addField("Captured Test", "```\n"+captured_text+"\n```" );}
+				if (evaled != undefined){em.addField("Returned", "```\n"+evaled+"\n```" );}
 				ctx.channel.send(em);
 			} catch (err) {
 				ctx.channel.send("```"+err+"```");

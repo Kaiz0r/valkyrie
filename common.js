@@ -21,12 +21,34 @@ Array.prototype.remove = function(from, to) {
   this.length = from < 0 ? this.length + from : from;
   return this.push.apply(this, rest);
 };
+
 Array.prototype.cut = function(target){	this.splice (this.indexOf(target), 1); };
 String.prototype.ssplit = function() { return exports.ssplit(this); };
 String.prototype.zp = function(n) { return '0'.times(n - this.length) + this; };
 String.prototype.reverse = function() { return this.split('').reverse().join(''); };
+String.prototype.lower = function() { return this.toLowerCase(); };
+String.prototype.toNumber = function() { return Number(this); };
+String.prototype.asTime = function() { return Number(this).asTime(); };
+
 Number.prototype.zp = function(n) { return this.toString().zp(n); };
 Number.prototype.truncate = function(n){return Math.round(this * Math.pow(10, n)) / Math.pow(10, n);};
+
+Number.prototype.as = function(def){ if (this == 0){return def;}else{return this;};};
+
+Number.prototype.asTime = function(){
+	let minutes = Math.floor(this / 60);
+	let seconds = this - minutes * 60;
+	if(minutes<10){minutes = `0${minutes}`;}
+	
+	if(seconds<10){seconds = `0${seconds}`;}
+	
+	return `${minutes}:${seconds}`;
+};
+
+exports.defaultNum = function(value){
+	if(value == undefined) return 0;
+	return value;
+};
 
 exports.Talkfilters = {
 	valid: ['austro', 'b1ff', 'brooklyn', 'chef', 'cockney', 'drawl', 'dubya', 'fudd', 'funetak', 'jethro', 'jive', 'kraut', 'pansy', 'pirate', 'postmodern', 'redneck', 'valspeak', 'warez'],

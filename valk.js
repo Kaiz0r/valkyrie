@@ -14,6 +14,7 @@ const prefix = cfg.get('prefix', '$');
 const token = cfg.get('token');
 
 var cman = new ext.CommandManager(prefix);
+process.on('unhandledRejection', error => console.error('Uncaught Promise Rejection', error));
 
 client.on('ready', () => {
 	print("Running Node ".rainbow+process.version.rainbow, tag="info");

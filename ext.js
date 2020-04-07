@@ -113,7 +113,7 @@ Ctx.prototype.play = async function(data){
 	const input = data.stream;
 	
 	if (vc && vc.currently_playing){
-		this.channel.send(`Adding ${title} to playlist..`);
+		this.channel.send(`Adding ${title} (${data.lengthParsed}) to playlist..`);
 		vc.playlist.push(data);
 		return;
 	}
@@ -123,7 +123,7 @@ Ctx.prototype.play = async function(data){
 	vc.dispatcher = vc.connection.play(input);
 	
 	vc.dispatcher.on('start', () => {
-		this.channel.send(`${title} is now playing!`);
+		this.channel.send(`${title} (${data.lengthParsed}) by ${data.user.mention} is now playing!`);
 		vc.currently_playing = title;
 	});
 
@@ -212,8 +212,13 @@ Ctx.prototype.getUser = function(name){
 exports.CommandManager.prototype.process_commands = function(client, cfg, msg){
 	if (msg.content.startsWith(this.prefix)){
 		var cmd = msg.content.replace(this.prefix, "");
-		var args = cmd.ssplit();
+		//var args = cmd.ssplit();
+		
+		var args = cmd.split(" ");
+		//if (dbg) args = cmd.ssplit();
 		var command = args.shift();
+		console.log(`command ${command}`);
+		console.log(`argsp ${args}`);
 		var ctx = new Ctx(this, client, msg, cfg);
 		try {
 			this.run(command, ctx, args);
