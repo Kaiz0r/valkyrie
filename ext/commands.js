@@ -2,6 +2,7 @@ var common = require('../common.js');
 const print = common.print;
 const util = require('util');
 const discord = require('discord.js');
+
 const Gamedig = require('gamedig');
 
 const luaState = require('lua-in-js');
@@ -45,6 +46,64 @@ exports.whois = {
 			}	
 		});
 	
+	}
+};
+
+exports.weather = {
+	help: "Current weather for location",
+	aliases: ['w'],
+	group: "utility",
+	usage: "[location]",
+	execute: async function(ctx, args) {
+		if (args.length == 0){ctx.channel.send("location required."); return;}
+		const w = new nc.WeatherAPI(ctx.cfg.get('weatherapikey'));
+
+		await w.current(args.join(" "), function(data){
+			console.log(data);
+			const name = `${data.location.name}, ${data.location.region}, ${data.location.country} (${data.location.tz_id})`;
+			const condition = `The current weather is ${data.current.condition.text}.`;
+			const tempr = `The temperature is ${data.current.temp_c}°C / ${data.current.temp_f}°F (Feels like ${data.current.feelslike_c}°C / ${data.current.feelslike_f}°F)`;
+			const winds = `There is winds from the ${data.current.wind_dir} with speeds of ${data.current.wind_kph} KPH.`;
+			const em = new discord.MessageEmbed()
+			.addField(name, `${condition}\n${tempr}\n${winds}`)
+			.setThumbnail(`https:${data.current.condition.icon}`)
+			.setFooter("Powered by WeatherAPI", "https://www.weatherapi.com/");
+			ctx.channel.send(em);
+
+		});
+	}
+};
+
+exports.forecast = {
+	help: "Current weather for location",
+	aliases: ['fc'],
+	group: "utility",
+	usage: "[location]",
+	execute: async function(ctx, args) {
+		if (args.length == 0){ctx.channel.send("location required."); return;}
+		const w = new nc.WeatherAPI(ctx.cfg.get('weatherapikey'));
+
+		const em = new discord.MessageEmbed();
+		
+		em.setFooter("Powered by WeatherAPI", "https://www.weatherapi.com/");
+		await w.forecast(args.join(" "), 7 , function(data){
+			for (const day of data.forecast.forecastday){
+				console.log(day);
+				const name = day.date;
+				const condition = `The weather will be ${day.day.condition.text}.`;
+				const tempr = `The temperature will be ${day.day.temp_c}°C / ${day.day.temp_f}°F (Feels like ${day.day.feelslike_c}°C / ${day.day.feelslike_f}°F)`;
+				const winds = `There will be winds from the ${day.day.wind_dir} with speeds of ${day.day.wind_kph} KPH.`;
+				const astro = `Sunrise will be at ${day.astro.sunrise}, and sunset will be at ${day.astro.sunset}.\Moonrise will be at ${day.astro.moonrise}, and moonset will be at ${day.astro.moonset}`;
+				
+				em.addField(name, `${condition}\n${tempr}\n${winds}\n${astro}`);
+				
+				em.setDescription(`${data.location.name}, ${data.location.region}, ${data.location.country} (${data.location.tz_id})`);
+			}
+
+			
+			ctx.channel.send(em);
+
+		});
 	}
 };
 

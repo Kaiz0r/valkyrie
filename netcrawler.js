@@ -22,6 +22,39 @@ exports.Covid = async function(callback){
 	});
 };
 
+exports.WeatherAPI = function(apikey){
+	this.apikey = apikey;
+};
+
+exports.WeatherAPI.prototype.send = function(endpoint, params, callback){
+	let url = `http://api.weatherapi.com/v1/${endpoint}.json?key=${this.apikey}&${params}`;
+	//console.log(url);
+	needle.get(url,
+			   function(error, response) {
+				   if (!error && response.statusCode == 200){
+					   //console.log(response.body);
+					   callback( response.body);
+			   }
+				   else
+					   callback({});
+			   });
+};
+
+exports.WeatherAPI.prototype.atronomy = async function(search, callback){
+	this.send('astronomy', `q=${search.replace(" ", "+")}&dt=`, function(body){callback(body);});
+};
+
+exports.WeatherAPI.prototype.current = async function(search, callback){
+	
+	this.send('current', `q=${search.replace(" ", "+")}`, function(data){callback(data);});
+	
+};
+
+exports.WeatherAPI.prototype.forecast = async function(search, days, callback){
+	if(days == undefined) days = "7";
+	this.send('forecast', `q=${search.replace(" ", "+")}&days=${days}`, function(body){callback(body);});
+};
+
 exports.DuckDuckGo = function(){
 	this.cache = {};
 };
