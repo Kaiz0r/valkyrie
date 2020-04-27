@@ -1,15 +1,11 @@
 const fs = require('fs');
 var common = require('./common.js');
-
-/*
- == FRAMEWORK ==
-cooldowns
-keep timestamps of executions in the manager to match against
-*/
+const moment = require('moment');
 
 function nocache(module) {
 	require("fs").watchFile(require("path").resolve(module), () => {delete require.cache[require.resolve(module)];});
 }
+
 
 function Command(data){
 	this.name = data.name;
@@ -25,9 +21,12 @@ function Command(data){
 	if (data.flags != undefined){this.flags = data.flags;}else{this.flags = [];}
 }
 
-exports.CommandManager = function(prefix){
+exports.ExtManager = function(client, prefix){
+	this.client = client;
 	this.commands = {};
 	this.aliasMap = {};
+
+	this.threads = {};
 	if (prefix == undefined){this.prefix = ".";}else{this.prefix = prefix;}
 };
 
@@ -42,11 +41,17 @@ function Ctx(cman, client, message, cfg) {
 	this.cfg = cfg;
 	this.reply = message.reply;
 	this.commands = cman;
+	this.ext = cman;
+
+	this.args = this.message.content.split(" ");
+	this.args.shift();
+	this.argsRaw = this.args.join(" ");
 }
-Ctx.prototype.invoke = async function(command, args){
-	console.log("Running..")
-	await this.commands.run(command, this, args);
+
+Ctx.prototype.invoke = async function(command){
+	await this.commands.run(command, this);
 };
+
 Ctx.prototype.clone = async function(){
 	var ctx = new Ctx(this.commands, this.client, this.msg, this.cfg);
 	return ctx;
@@ -57,6 +62,7 @@ Ctx.prototype.newCtx = async function(msg){
 	return ctx;
 };
 
+exports.rand = function(intn) { return Math.floor((Math.random() * int) + 1); };
 
 
 function VoiceManager(){};
@@ -109,7 +115,7 @@ Ctx.prototype.play = async function(data){
 	//var vc = await vm.getClient(this);
 	var vc = await vm.getClient(this);
 
-	const title = data.title;
+	let title = data.title;
 	const input = data.stream;
 	
 	if (vc && vc.currently_playing){
@@ -123,7 +129,22 @@ Ctx.prototype.play = async function(data){
 	vc.dispatcher = vc.connection.play(input);
 	
 	vc.dispatcher.on('start', () => {
-		this.channel.send(`${title} (${data.lengthParsed}) by ${data.user.mention} is now playing!`);
+		let name = "";
+		if (data.user.nickname == undefined){name = data.user.nickname;}else{name = data.user.user.username;}
+
+		const cleanSongTitle = function(ctx, title){
+			var mcfg = ctx.cfg.get("audio_search_clean", []);
+			let out = title;
+			for (const filt of mcfg){
+				out = out.replace(filt, '');
+			}
+			//out = out.replace('[HQ]', '');
+			//out = out.replace('[HD]', '');
+			//out = out.replace('lyrics', '');
+			return out;
+		};
+		title = cleanSongTitle(this, title);
+		this.channel.send(`${title} (${data.lengthParsed}) by ${name} is now playing!`);
 		vc.currently_playing = title;
 	});
 
@@ -149,7 +170,19 @@ Ctx.prototype.play = async function(data){
 	vc.dispatcher.on('error', console.error);
 };
 
-Ctx.prototype.getGuildChannel = function( name){
+Ctx.prototype.say = function(msg){
+	this.channel.send(msg);
+};
+
+Ctx.prototype.code = function(msg, code){
+	this.channel.send(`\`\`\`${code}\n${msg}\n\`\`\``);
+};
+
+//Ctx.prototype.sendEmbed = function(msg){
+	//this.channel.send(msg);
+//};
+
+Ctx.prototype.getGuildChannel = function(name){
 	for (const chan of this.guild.channels.cache){
 		const u = chan[1];
 		if (u.name == name || u.id == name){
@@ -159,10 +192,10 @@ Ctx.prototype.getGuildChannel = function( name){
 	return undefined;
 };
 
-Ctx.prototype.FindGuildChannel = function( name){
+Ctx.prototype.findGuildChannel = function(name){
 	for (const chan of this.guild.channels.cache){
 		const u = chan[1];
-		if (u.name.includes(name) || u.name == name || u.id == name){
+		if (u.name.lower().includes(name.lower()) || u.name.lower() == name.lower() || u.id == name){
 			return u;
 		}
 	}
@@ -179,10 +212,60 @@ Ctx.prototype.getChannel = function(name){
 	return undefined;
 };
 
+Ctx.prototype.findChannel = function(name){
+	for (const chan of this.client.channels.cache){
+		const u = chan[1];
+		if (u.name.lower().includes(name.lower()) || u.name.lower() == name.lower() || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.getGuild = function(name){
+	for (const guild of this.client.guilds.cache){
+		const u = guild[1];
+		if (u.name == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.findGuild = function(name){
+	for (const guild of this.client.guilds.cache){
+		const u = guild[1];
+		if (u.name.lower().includes(name.lower()) || u.name.lower() == name.lower() || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.getRole = function(name){
+	for (const role of this.guild.roles.cache){
+		const u = role[1];
+		if (u.name == name || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+Ctx.prototype.findRole = function(name){
+	for (const role of this.guild.roles.cache){
+		const u = role[1];
+		if (u.name.lower().includes(name.lower()) || u.name.lower() == name.lower() || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
 Ctx.prototype.getMember = function(name){
 	for (const user of this.guild.members.cache){
 		const u = user[1];
-		if (u.nickname == name || u.id == name){
+		if (u.nickname == name || u.id == name || u.user.username == name){
 			return u;
 		}
 	}
@@ -209,19 +292,24 @@ Ctx.prototype.getUser = function(name){
 	return undefined;
 };
 
-exports.CommandManager.prototype.process_commands = function(client, cfg, msg){
+Ctx.prototype.getUser = function(name){
+	for (const user of this.client.users.cache){
+		const u = user[1];
+		if (u.username.lower().includes(name.lower()) ||u.username.lower() == name.lower() || u.id == name){
+			return u;
+		}
+	}
+	return undefined;
+};
+
+exports.ExtManager.prototype.process_commands = function(client, cfg, msg){
 	if (msg.content.startsWith(this.prefix)){
 		var cmd = msg.content.replace(this.prefix, "");
-		//var args = cmd.ssplit();
-		
 		var args = cmd.split(" ");
-		//if (dbg) args = cmd.ssplit();
 		var command = args.shift();
-		console.log(`command ${command}`);
-		console.log(`argsp ${args}`);
 		var ctx = new Ctx(this, client, msg, cfg);
 		try {
-			this.run(command, ctx, args);
+			this.run(command, ctx);
 		}catch(err){
 			msg.channel.send(common.wrap(err));	
 		}
@@ -229,7 +317,7 @@ exports.CommandManager.prototype.process_commands = function(client, cfg, msg){
 	}
 };
 
-exports.CommandManager.prototype.reload_ext = function(target){
+exports.ExtManager.prototype.reload_ext = function(target){
 	if (target != undefined){
 		nocache(`./ext/${target}`);
 		var count = 0;
@@ -257,11 +345,39 @@ exports.CommandManager.prototype.reload_ext = function(target){
 	}
 };
 
-exports.CommandManager.prototype.asList = function(){
+exports.ExtManager.prototype.reload_threads = function(target){
+	if (target != undefined){
+		nocache(`./threads/${target}`);
+		var count = 0;
+		const command = require(`./threads/${target}`);
+		for (const c of Object.keys(command)){
+			this.addThread(c, command[c]);
+			count += 1;
+		}
+		return count;
+		
+	}else{
+		const commandFiles = fs.readdirSync('./threads').filter(file => file.endsWith('.js'));
+		this.threads = {};
+		for (const file of commandFiles) {
+			nocache(`./threads/${file}`);
+			const command = require(`./threads/${file}`);
+			for (const c of Object.keys(command)){
+				this.addThread(c, command[c]);
+			}
+		}
+		return commandFiles;
+	}
+};
+
+exports.ExtManager.prototype.asList = function(){
 	return Object.keys(this.commands);
 };
 
-exports.CommandManager.prototype.addCommand = function(name, data){
+exports.ExtManager.prototype.addCommand = function(name, data){
+	if(data.auto != undefined) data.auto(this.client);
+	
+	if(data.execute == undefined)return;
 	data.name = name;
 	this.commands[name] = new Command(data);
 	const aliases = this.commands[name].aliases;
@@ -270,33 +386,49 @@ exports.CommandManager.prototype.addCommand = function(name, data){
 	}
 };
 
-exports.CommandManager.prototype.set = function(name, key, val){
+exports.ExtManager.prototype.addThread = function(name, data){
+	if(this.client._config.get('halted_threads').includes(name)) return;
+	
+	let interval = 1000;
+	if (data.interval != undefined){interval = data.interval;}
+	let thr = this.client.setInterval(data.loop, interval, {client: this.client});
+	this.threads[name] = thr;
+	
+};
+
+exports.ExtManager.prototype.stopThread = function(name){
+	this.client.clearInterval(this.threads[name]);
+};
+
+exports.ExtManager.prototype.set = function(name, key, val){
 	this.commands[name][key] = val;
 };
 
-exports.CommandManager.prototype.setHelp = function(name, help){
+exports.ExtManager.prototype.setHelp = function(name, help){
 	this.commands[name].help = help;
 };
 
-exports.CommandManager.prototype.setGroup = function(name, group){
+exports.ExtManager.prototype.setGroup = function(name, group){
 	this.commands[name].group = group;
 };
 
-exports.CommandManager.prototype.setAliases = function(name, aliases){
+exports.ExtManager.prototype.setAliases = function(name, aliases){
 	for (i=0;i<aliases.length;i++){
 		this.commands[name].aliases.push(aliases[i]);
 		this.aliasMap[aliases[i]] = name;
 	}
 };
 
-exports.CommandManager.prototype.getCommand = function(name){
+exports.ExtManager.prototype.getCommand = function(name){
 	return this.commands[name];
 };
 
-exports.CommandManager.prototype.run = async function(name, ctx, args){
+exports.ExtManager.prototype.run = async function(name, ctx, args){
 	if (this.commands[name] != undefined){
-		await this.commands[name].execute(ctx, args);
+		try {
+			await this.commands[name].execute(ctx);
+		}catch(err) {ctx.channel.send(common.wrap(err));}
 	}else if (this.aliasMap[name] != undefined){
-		this.run(this.aliasMap[name], ctx, args);
+		this.run(this.aliasMap[name], ctx);
 	}
 };

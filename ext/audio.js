@@ -23,7 +23,7 @@ exports.connect = {
 	help: "Joins the voice channel the user is in.",
 	group: "audio",
 	aliases: ['join'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		let r = await ctx.connect_voice();
 		
 		if (r){
@@ -38,7 +38,7 @@ exports.disconnect = {
 	help: "Disconnects from the voice channel.",
 	group: "audio",
 	aliases: ['dc'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		await ctx.cleanup_voice(ctx);
 	}
 };
@@ -47,7 +47,7 @@ exports.nowplaying = {
 	help: "Shows what is currently playing.",
 	group: "audio",
 	aliases: ['np'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		let vc = await ctx.voiceClient();
 		ctx.reply(vc.currently_playing);		
 	}
@@ -57,13 +57,15 @@ exports.playlist = {
 	help: "Shows the playlist.",
 	group: "audio",
 	aliases: ['pl'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		let vc = await ctx.voiceClient();
 
 		var outp = "";
 		console.log(vc.playlist);
 		vc.playlist.forEach(function(item){
-			outp += `${item.title} (${item.lengthParsed}) by ${item.user.username} (<@${item.user.id}>)\n`;
+			let name = "";
+			if (item.user.nickname == undefined){name = item.user.nickname;}else{name = item.user.user.username;}
+			outp += `${item.title} (${item.lengthParsed}) by ${name}\n`;
 		});
 
 		ctx.reply(outp);		
@@ -74,7 +76,7 @@ exports.stop = {
 	help: " ",
 	group: "audio",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		var vc = await ctx.vm.getClient(ctx);
 		vc.dispatcher.emit('quit');
 	}
@@ -84,7 +86,7 @@ exports.skip = {
 	help: " ",
 	group: "audio",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		var vc = await ctx.vm.getClient(ctx);
 		vc.dispatcher.emit('finish');
 	}
@@ -95,7 +97,8 @@ exports.volume = {
 	group: "audio",
 	aliases: [],
 	usage: "[Number: 0-100]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		var vc = await ctx.vm.getClient(ctx);
 		const vol = Number(args[0]);
 		vc.dispatcher.setVolume(vol / 100);
@@ -106,7 +109,7 @@ exports.pause = {
 	help: " ",
 	group: "audio",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		var vc = await ctx.vm.getClient(ctx);
 		if (vc.dispatcher.paused){
 			vc.dispatcher.resume();
@@ -121,7 +124,7 @@ exports.importstations = {
 	help: " ",
 	group: "#hidden",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		let rawdata = fs.readFileSync('/home/bots/PythenaRewrite/radio.json');
 		ctx.cfg.set('radio', JSON.parse(rawdata));
 		ctx.channel.send("Imported PythenaRewrite/radio.js in to Valk config.");
@@ -132,7 +135,8 @@ exports.station = {
 	help: "Plays a radio station.",
 	group: "audio",
 	aliases: ['st'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		args = args.join(" ");
 
 		if (ctx.member.voice && ctx.member.voice.channel) {
@@ -140,7 +144,7 @@ exports.station = {
 			const channels = ctx.cfg.get('radio');
 			if (channels[args] != undefined){
 				const c = channels[args];
-				await ctx.play({"stream": c.url, "title": c.name, "user": ctx.member});	
+				await ctx.play({"stream": c.url, "title": c.name, "user": ctx.member, "length": "∞", "lengthParsed": "∞"});	
 			}else{
 				ctx.channel.send("Station not found.");
 			}
@@ -152,7 +156,7 @@ exports.stations = {
 	help: "Lists known radio stations.",
 	group: "audio",
 	aliases: ['sls'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		const channels = ctx.cfg.get('radio');
 		ctx.channel.send(Object.keys(channels).join("\n"));
 	}
@@ -164,7 +168,8 @@ exports.lyrics = {
 	aliases: ['lyric', 'lyr'],
 	usage: ['[search term* or currently playing if not provided]'],
 	flags: ['$wip'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		let title = "";
 		if(args.length == 0){
 			let vc = await ctx.voiceClient();
@@ -203,7 +208,8 @@ exports.save = {
 	aliases: ['sv', 'bm'],
 	usage: ['[search term* or currently playing if not provided]'],
 	flags: ['$wip'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		var mcfg = ctx.cfg.get(ctx.member.id);
 		if (mcfg == undefined) mcfg = {};
 		if (mcfg.audioFav == undefined) mcfg.audioFav = [];
@@ -229,7 +235,8 @@ exports.saves = {
 	group: "audio",
 	aliases: ['svs', 'bms'],
 	flags: ['$wip'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		var mcfg = ctx.cfg.get(ctx.member.id);
 		if (mcfg == undefined) mcfg = {};
 		if (mcfg.audioFav == undefined) mcfg.audioFav = ['None'];
@@ -256,7 +263,7 @@ exports.vtts = {
 	aliases: ['vo'],
 	usage: ['[message]'],
 	flags: ['$concept'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		
 	}
 };
@@ -267,7 +274,8 @@ exports.vcfilter = {
 	aliases: ['vcf'],
 	usage: ['[search term]'],
 	flags: ['$wip'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isWhitelisted(ctx)){ctx.channel.send("Access denied.");return;}
 		var mcfg = ctx.cfg.get("audio_search_filters", []);
 		if (args.length == 0){
@@ -284,6 +292,33 @@ exports.vcfilter = {
 			ctx.channel.send("Filter added.");
 		}
 		ctx.cfg.set("audio_search_filters", mcfg);
+	}
+};
+
+exports.vcclr = {
+	help: "Defines values to hide from song track names..",
+	group: "audio",
+	aliases: ['vclr'],
+	usage: ['[search term]'],
+	flags: ['$wip'],
+	execute: async function(ctx) {
+		let args = ctx.args;
+		if (!checks.isWhitelisted(ctx)){ctx.channel.send("Access denied.");return;}
+		var mcfg = ctx.cfg.get("audio_search_clean", []);
+		if (args.length == 0){
+			ctx.channel.send(`Fitlers: ${mcfg}`);
+			return;
+		}
+		args = args.join(" ");
+
+		if (mcfg.includes(args)){
+			mcfg.cut(args);
+			ctx.channel.send("Filter removed.");
+		}else{
+			mcfg.push(args);
+			ctx.channel.send("Filter added.");
+		}
+		ctx.cfg.set("audio_search_clean", mcfg);
 	}
 };
 
@@ -312,7 +347,8 @@ exports.play = {
 	help: "Plays audio to the current voice channel.",
 	group: "audio",
 	aliases: ['p'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		args = args.join(" ");
 		let first = false;
 		if (args.includes("-first")){
@@ -350,11 +386,12 @@ exports.playfile = {
 	help: "Plays audio to the current voice channel.",
 	group: "audio",
 	aliases: ['pf'],
-	execute: async function(ctx, args) { 
+	execute: async function(ctx) {
+		let args = ctx.args;
 		args = args.join(" ");
 
 		if (ctx.member.voice && ctx.member.voice.channel) {
-			await ctx.play({"stream": args, "title": args, "user": ctx.member, "length": "UNKNOWN", "lengthParsed": "UNKNOWN"});	
+			await ctx.play({"stream": args, "title": args, "user": ctx.member, "length": "N/A", "lengthParsed": "N/A"});	
 
 		}	
 	}

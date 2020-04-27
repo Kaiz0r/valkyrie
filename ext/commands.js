@@ -11,33 +11,116 @@ var needle = require('needle');
 const cheerio = require('cheerio');
 const checks = require('../checks.js');
 const nc = require('../netcrawler.js');
-/*
- = TODO =
+const querystring = require('querystring');
 
+exports.updateRecruits = {
+	auto: async function(client){
+		console.log("Updating Recruit monitor...");
+		let record = client._config.get('recruit_records');
+		if (record == undefined) {record = [];}
 
- == COMMANDS == 
-run as <member> <command>
+		for (const g of client.guilds.cache){
+			let guild = g[1];
+											  
+			if (guild.id == "396716931962503169"){
+				const channel = guild.channels.cache.find(ch => ch.name === 'botmasters-testzone');
+				const recruit = guild.roles.cache.find(ch => ch.name === 'recruit');
+				
+				for (const m of guild.members.cache){
+					let member = m[1];
+					if(member.roles.cache.array().includes(recruit)){
+						console.log(member.user.username);
+						if (!record.includes(member.id) && member.presence.status != "offline"){
+							channel.send(`monitor: ${member.user.username} has been seen.`);
+							record.push(member.id);
+							client._config.set('recruit_records', record);
+						}
+					}
+					
+				}
+			}}}};
 
-run in <channel> <command>
+exports.thread = {
+	help: "Thread manager",
+	aliases: ['thr'],
+	group: "utility",
+	usage: "",
+	execute: async function(ctx){
+		ctx.code(Object.keys(ctx.ext.threads).join("\n"));
+	}
+};
 
-covid
+exports.reloadthread = {
+	help: "Thread manager",
+	aliases: ['rthr'],
+	group: "utility",
+	usage: "",
+	execute: async function(ctx){
+		if (ctx.args.length == 0){
+			ctx.ext.reload_threads();
+		}else{
+			ctx.ext.reload_threads(ctx.args[0]);
+		}
+	}
+};
 
-echo command that lets it say a message in any channel
-in help, if command has flags for $owner, $admin, $whitelist, run the check on executor to know if it should show
+exports.stopthread = {
+	help: "Thread manager",
+	aliases: ['sthr'],
+	group: "utility",
+	usage: "",
+	execute: async function(ctx){
+		ctx.ext.stopThread(ctx.args[0]);
+	}
+};
 
-youtube command, using the same search feature as play
+exports.haltthread = {
+	help: "Thread manager",
+	aliases: ['hthr'],
+	group: "utility",
+	usage: "",
+	execute: async function(ctx){
+		let t = ctx.cfg.get('halted_threads');
+		if (t == undefined) t = [];
 
-netcrawler lib for JS
+		if(t.includes(ctx.args[0]))
+			t.cut(ctx.args[0]);
+		else
+			t.push(ctx.args[0]);
+		ctx.cfg.set('halted_threads', t);
+		ctx.code(t.join(", "), '');
+	}
+};
 
-hunger games module
-*/
+exports.inspect = {
+	help: "Views source code of a JS object.",
+	aliases: ['src'],
+	group: "utility",
+	usage: "[fn]",
+	execute: async function(ctx){
+		let fn = undefined;
+		if (ctx.args[0] == "cmd"){
+			fn = ctx.commands.commands[ctx.args[1]].execute;
+		}else if (ctx.args[0] == "common"){
+			fn = common[ctx.args[1]];
+		}else if (ctx.args[0] == "ctx"){
+			if (ctx.args.length == 2)
+				fn = ctx[ctx.args[1]];
+			else if (ctx.args.length == 3)
+				fn = ctx[ctx.args[1]][ctx.args[2]];
+		}
 
+		if (fn != undefined){ctx.code(fn.toString(), 'js');}else{ctx.say("Function definition not found.");}
+		
+	}
+};
 exports.whois = {
 	help: "IP information lookup",
 	aliases: ['ip'],
 	group: "utility",
 	usage: "[IP Address]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (args.length == 0){ctx.channel.send("IP required."); return;}
 		await nc.Whois(args[0], function(data){
 			for (const c of Object.keys(data)){
@@ -54,7 +137,8 @@ exports.weather = {
 	aliases: ['w'],
 	group: "utility",
 	usage: "[location]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (args.length == 0){ctx.channel.send("location required."); return;}
 		const w = new nc.WeatherAPI(ctx.cfg.get('weatherapikey'));
 
@@ -79,7 +163,8 @@ exports.forecast = {
 	aliases: ['fc'],
 	group: "utility",
 	usage: "[location]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (args.length == 0){ctx.channel.send("location required."); return;}
 		const w = new nc.WeatherAPI(ctx.cfg.get('weatherapikey'));
 
@@ -112,8 +197,9 @@ exports.covid = {
 	aliases: ['covid19', 'corona', 'ncov'],
 	group: "utility",
 	usage: "[search]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		await nc.Covid(async function(data){
+			let args = ctx.args;
 			const em = new discord.MessageEmbed();
 			var total = 0;
 			var total_cases = 0;
@@ -188,7 +274,7 @@ exports.youtube = {
 	help: "Searches youtube.",
 	aliases: ['yt'],
 	group: "fun",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 
 	}
 };
@@ -197,7 +283,8 @@ exports.run = {
 	help: "Simulate command settings.",
 	group: "admin",
 	flags: ['$owner'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isOwner(ctx)){return;}
 		const mode = args.shift();
 		const target = args.shift();
@@ -221,7 +308,8 @@ exports.debug = {
 	help: "Debugging properties.",
 	group: "admin",
 	flags: ['$hidden'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		ctx.channel.send(`${ctx.member}\n${args}`);
 	}
 };
@@ -231,7 +319,8 @@ exports.set = {
 	group: "admin",
 	flags: ['$owner'],
 	usage: "[key] [value]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isOwner(ctx)){return;}
 		const key = args.shift();
 		var value = args.join(" ");
@@ -248,7 +337,8 @@ exports.get = {
 	group: "admin",
 	flags: ['$owner'],
 	usage: "[key] [value]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isOwner(ctx)){return;}
 		ctx.reply(ctx.cfg.get(args.join (" ")));
 	}
@@ -259,7 +349,8 @@ exports.whitelist = {
 	group: "admin",
 	flags: ['$owner'],
 	usage: "[member]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		var ls = ctx.cfg.get('whitelist', []);
 		
 		if (args.length == 0){
@@ -289,7 +380,8 @@ exports.reload = {
 	group: "admin",
 	flags: ['$owner'],
 	usage: "[optional: module]",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isOwner(ctx)){return;}
 		if (args.length == 0){
 			const out = ctx.commands.reload_ext();
@@ -304,7 +396,8 @@ exports.reload = {
 exports.help = {
 	help: "Gets help.",
 	flags: ['$hidden'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (args.length != 0){
 			var target = ctx.commands.commands[args[0]];
 
@@ -377,8 +470,20 @@ exports.inviteme = {
 	help: "Creates an invitation",
 	group: "bot",
 	aliases: ['inv', 'iv'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		ctx.channel.send("<https://discordapp.com/oauth2/authorize?client_id=507218821673648148&scope=bot>");	
+	}
+};
+
+exports.unban = {
+	help: "Unbans a user",
+	execute: async function(ctx){
+		ctx.guild.fetchBans().then(function(bans){
+			for (const ban of bans.array()) {
+				if (ban.user.id == ctx.args[0])
+				ctx.guild.members.unban(ban.user.id).then(user => ctx.say(`Unbanned ${user.username} from ${ctx.guild.name}`));
+			}
+		});
 	}
 };
 
@@ -387,7 +492,8 @@ exports.gm = {
 	group: "gaming",
 	usage: "[ip] [port]",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		var host = "185.38.150.28",
 			port = "27055";
 		
@@ -418,7 +524,7 @@ exports.cat = {
 	help: " ",
 	group: "animals",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		const headers = {"x-api-key": "dca2da26-0ed8-406b-a99d-b8e86d165c99"};
 
 		needle.get('https://api.thecatapi.com/v1/images/search', headers, function(error, response) {
@@ -431,7 +537,7 @@ exports.cat = {
 exports.dog = {
 	help: " ",
 	group: "animals",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://random.dog/woof.json', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.url);
@@ -443,7 +549,7 @@ exports.dog = {
 exports.catfact = {
 	help: " ",
 	group: "animals",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/facts/cat', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.fact);
@@ -454,7 +560,7 @@ exports.catfact = {
 exports.dogfact = {
 	help: " ",
 	group: "animals",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/facts/dog', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.fact);
@@ -466,7 +572,7 @@ exports.dog2 = {
 	help: "",
 	group: "animals",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://dog.ceo/api/breeds/image/random', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.message);
@@ -478,7 +584,7 @@ exports.bird = {
 	help: "",
 	group: "animals",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('http://shibe.online/api/birds?count=1&urls=true', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body[0]);
@@ -490,7 +596,7 @@ exports.shibe = {
 	help: "",
 	group: "animals",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('http://shibe.online/api/shibes?count=1&urls=true', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body[0]);
@@ -502,7 +608,7 @@ exports.fox = {
 	help: "",
 	group: "animals",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://randomfox.ca/floof/', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.image);
@@ -514,7 +620,7 @@ exports.bun = {
 	help: "",
 	group: "animals",
 	aliases: [],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://dotbun.com/', function(error, response) {
 			if (!error && response.statusCode == 200){
 				let $ = cheerio.load(response.body);
@@ -528,7 +634,7 @@ exports.bun = {
 
 exports.pika = {
 	group: "meme",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/pikachuimg', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.link);
@@ -538,7 +644,7 @@ exports.pika = {
 
 exports.hug = {
 	group: "meme",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/animu/hug', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.link);
@@ -548,7 +654,7 @@ exports.hug = {
 
 exports.pat = {
 	group: "meme",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/animu/pat', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.link);
@@ -558,7 +664,7 @@ exports.pat = {
 
 exports.wink = {
 	group: "meme",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/animu/wink', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.link);
@@ -568,7 +674,7 @@ exports.wink = {
 
 exports.duck = {
 	group: "animals",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://random-d.uk/api/quack', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.url);
@@ -578,7 +684,7 @@ exports.duck = {
 
 exports.redpanda = {
 	group: "animals",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/img/red_panda', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.link);
@@ -588,10 +694,39 @@ exports.redpanda = {
 
 exports.panda = {
 	group: "animals",
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
 		needle.get('https://some-random-api.ml/img/panda', function(error, response) {
 			if (!error && response.statusCode == 200)
 				ctx.channel.send(response.body.link);
+		});		
+	}
+};
+
+exports.urban = {
+	group: "api",
+	execute: async function(ctx) {
+		let page = 0;
+		const ut = (str, max) => ((str.length > max) ? `${str.slice(0, max - 3)}...` : str);
+
+		if (!isNaN(ctx.args[0])){page = ctx.args.shift().toNumber();}
+		const query = querystring.stringify({ term: ctx.args.join(' ') });
+		needle.get(`https://api.urbandictionary.com/v0/define?${query}`, function(error, response) {
+			if (!error && response.statusCode == 200){
+				let list = response.body.list;
+				let answer = list[page];
+				if (answer == undefined){ctx.say(`${ctx.args.join(' ')} not found.`); return;}
+				const embed = new discord.MessageEmbed()
+					  .setColor('#EFFF00')
+					  .setTitle(answer.word)
+					  .setURL(answer.permalink)
+					  .addFields(
+						  { name: 'Definition', value: ut(answer.definition, 1024) },
+						  { name: 'Example', value: ut(answer.example, 1024) },
+						  { name: 'Rating', value: `👍 ${answer.thumbs_up} / 👎 ${answer.thumbs_down}` }
+					  );
+
+				ctx.channel.send(embed);
+			}
 		});		
 	}
 };
@@ -602,7 +737,8 @@ exports.lua = {
 	aliases: [],
 	flags: ['$whitelist'],
 	usage: ['[code]'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isWhitelisted(ctx)){ctx.channel.send("Access denied.");return;}
 		args = args.join(" ");
 		args = args.replace("```lua", "");
@@ -625,7 +761,7 @@ exports.lua = {
 
 		unhook_intercept();
 
-		if (captured_text != ""){em.addField("Captured Test", "```\n"+captured_text+"\n```" );}
+		if (captured_text != ""){em.addField("Captured Text", "```\n"+captured_text+"\n```" );}
 		if (returnValue != undefined){em.addField("Returned", "```\n"+returnValue+"\n```" );}
 		
 		em.setAuthor(ctx.member.nickname, ctx.member.user.avatarURL(), '');
@@ -644,11 +780,14 @@ exports.js = {
 	aliases: ['eval'],
 	flags: ['$whitelist'],
 	usage: ['[code]'],
-	execute: async function(ctx, args) {
+	execute: async function(ctx) {
+		let args = ctx.args;
 		if (!checks.isWhitelisted(ctx)){ctx.channel.send("Access denied.");return;}
 		args = args.join(" ");
 		args = args.replace("```js", "");
 		args = args.replace("```", "");
+		let outs = 0;
+		
 		if (args == ""){
 			ctx.channel.send("```Requires code to execute.```");
 		}else{
@@ -667,9 +806,13 @@ exports.js = {
 				em.setAuthor(ctx.member.nickname, ctx.member.user.avatarURL(), '');
 				em.setColor('#0099ff');
 				em.setTimestamp();
-				if (captured_text != ""){em.addField("Captured Test", "```\n"+captured_text+"\n```" );}
-				if (evaled != undefined){em.addField("Returned", "```\n"+evaled+"\n```" );}
-				ctx.channel.send(em);
+				
+				if (captured_text != "" && captured_text != "undefined" && captured_text != undefined){em.addField("Captured Text", "```\n"+captured_text+"\n```" );outs += 1;}
+				if (evaled != undefined){em.addField("Returned", "```\n"+evaled+"\n```" );outs += 1;}
+
+				if (outs > 0)
+					ctx.channel.send(em);
+				
 			} catch (err) {
 				ctx.channel.send("```"+err+"```");
 			}

@@ -2,6 +2,8 @@ var needle = require('needle');
 const cheerio = require('cheerio');
 const fs = require('fs');
 const os = require('os');
+const lib = require('./common.js');
+
 exports.path = `${os.homedir()}/.yggdrasil/`;
 
 function searchKeys(data, key){
@@ -52,7 +54,7 @@ exports.docs.lua.get = async function(search, callback){
 		needle.get(this.index, function(error, response) {
 			let data = {};
 			if (!error && response.statusCode == 200){ 
-				let sect = response.body.split("\n\n");
+				let sect = response.body.split("\n\n\n\n");
 				for (let i = 0; i < sect.length; i++) {
 					let $ = cheerio.load(sect[i]);
 					let head = $("h3").text();
@@ -102,4 +104,62 @@ exports.docs.twsg = {
 	url: "https://www.motoslave.net/sugarcube/2/docs/",
 	extra: {tweego: "https://www.motoslave.net/tweego/docs/"},
 	data: {}
+};
+
+exports.docs.gwiki = {
+	name: "GLua Wiki",
+	version: "*",
+	url: "https://wiki.facepunch.com/gmod/",
+	index: "https://metastruct.github.io/gmod-wiki-scraper/gwiki.json",
+	data: {}
+};
+
+exports.docs.gwiki.get = async function(search, callback){
+	let continueproc = true;
+	if(!fs.existsSync(`${exports.path}gwiki.json`)){
+		console.log("Creating gwiki.json")
+		needle.get(this.index, function(error, response) {
+			let data = {};
+			if (!error && response.statusCode == 200){
+				if(!fs.existsSync(exports.path)){
+					fs.mkdirSync(exports.path);
+				}
+				let data = JSON.stringify(response.body, null, 2);
+				fs.writeFile(exports.path+"gwiki.json", data, (err) => {
+					if (err) throw err;
+					console.log('Data written to file');
+				});				
+			}
+		});
+	}
+	
+	let d = JSON.parse(fs.readFileSync(`${exports.path}gwiki.json`));
+	let out = [];
+	let master = null;
+	if (search.includes(".")){master = search.split(".")[0]; search = search.split(".")[1];}
+	const checkMaster = function(inp){
+		if (master == null) return true;
+		if (inp.lower().includes(master.lower())) return true;
+		return false;
+	};
+	
+	for (let i = 0; i < d.length; i++) {
+		let ob = d[i];
+		//console.log(ob)
+		if(ob.function != undefined){
+			if(ob.function.name.lower().includes(search.lower()) && checkMaster(ob.function.parent)) out.push(ob);
+		}else if(ob.enum != undefined && lib.isObject(ob.enum)){
+			if( (typeof(ob.enum.description) == String && ob.enum.description.lower().includes(search.lower())) || (ob.enum.description.text != undefined && ob.enum.description.text.lower().includes(search.lower())) )
+				out.push(ob);
+		}else if(ob.enum != undefined && lib.isArray(ob.enum)){
+			for (let i = 0; i < ob.enum.length; i++) {
+				let en = ob.enum[i];		
+				if( (typeof(en.description) == String && en.description.lower().includes(search.lower())) || (en.description.text != undefined && en.description.text.lower().includes(search.lower())) )
+					out.push(en);
+			}
+		}
+	}
+	
+	callback(out);
+
 };

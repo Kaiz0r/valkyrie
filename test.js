@@ -1,12 +1,19 @@
 const {docs} = require('./yggdrasil.js');
 const lib = require('./common.js')
-docs.lua.get(".sub", function(data) {
+
+/*
+docs.lua.get("getmetatable", function(data) {
 	if(data == undefined)console.log("undefined");
 	if(data == "")console.log("empty");
-	console.log(data[0])
-	console.log(data[1].stripAll())
-});
+	console.log(data)
+	});*/
 
+
+docs.gwiki.get("explode", function(data) {
+	if(data == undefined)console.log("undefined");
+	if(data == "")console.log("empty");
+	console.log(data)
+});
 
 /*
 var e = new inspire.Markov();

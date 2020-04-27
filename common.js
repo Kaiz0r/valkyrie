@@ -32,16 +32,13 @@ String.prototype.asTime = function() { return Number(this).asTime(); };
 String.prototype.stripAll = function(alternate = "") {return this.replace(/(\r\n\t|\n|\r\t)/gm, alternate);};
 Number.prototype.zp = function(n) { return this.toString().zp(n); };
 Number.prototype.truncate = function(n){return Math.round(this * Math.pow(10, n)) / Math.pow(10, n);};
-
 Number.prototype.as = function(def){ if (this == 0){return def;}else{return this;};};
 
 Number.prototype.asTime = function(){
 	let minutes = Math.floor(this / 60);
 	let seconds = this - minutes * 60;
 	if(minutes<10){minutes = `0${minutes}`;}
-	
 	if(seconds<10){seconds = `0${seconds}`;}
-	
 	return `${minutes}:${seconds}`;
 };
 
@@ -49,6 +46,7 @@ exports.defaultNum = function(value){
 	if(value == undefined) return 0;
 	return value;
 };
+global.defaultNum = function(value){return exports.defaultNum(value);};
 
 exports.Talkfilters = {
 	valid: ['austro', 'b1ff', 'brooklyn', 'chef', 'cockney', 'drawl', 'dubya', 'fudd', 'funetak', 'jethro', 'jive', 'kraut', 'pansy', 'pirate', 'postmodern', 'redneck', 'valspeak', 'warez'],
@@ -133,12 +131,9 @@ exports.space = function(base, count, next){
 	return pre+next;
 };
 
-exports.echo = function(message, tag="none", timestamp=false){
-	exports.print(mesage, tag, timestamp);
-};
-
 exports.print = function(message, tag="none", timestamp=true){
-	ts = "";
+	let ts = "";
+	let stag = "";
 	if (timestamp){
 		ts = moment().format('MM-D-YYYY HH:mm:ss')+" | ";
 	}
@@ -157,3 +152,20 @@ exports.print = function(message, tag="none", timestamp=true){
 	}
 };
 
+global.echo = function(msg, ...args) {console.log(msg, ...args);};
+
+exports.isArray = function(a) {
+    return (!!a) && (a.constructor === Array);
+};
+
+exports.isObject = function(a) {
+    return (!!a) && (a.constructor === Object);
+};
+
+global.isArray = function(a) {
+    return exports.isArray(a);
+};
+
+global.isObject = function(a) {
+    return exports.isObject(a);
+};
