@@ -45,6 +45,7 @@ exports.thread = {
 	aliases: ['thr'],
 	group: "utility",
 	usage: "",
+	flags: ["$hidden"],
 	execute: async function(ctx){
 		ctx.code(Object.keys(ctx.ext.threads).join("\n"));
 	}
@@ -55,6 +56,7 @@ exports.reloadthread = {
 	aliases: ['rthr'],
 	group: "utility",
 	usage: "",
+		flags: ["$hidden"],
 	execute: async function(ctx){
 		if (ctx.args.length == 0){
 			ctx.ext.reload_threads();
@@ -69,6 +71,7 @@ exports.stopthread = {
 	aliases: ['sthr'],
 	group: "utility",
 	usage: "",
+		flags: ["$hidden"],
 	execute: async function(ctx){
 		ctx.ext.stopThread(ctx.args[0]);
 	}
@@ -79,6 +82,7 @@ exports.haltthread = {
 	aliases: ['hthr'],
 	group: "utility",
 	usage: "",
+		flags: ["$hidden"],
 	execute: async function(ctx){
 		let t = ctx.cfg.get('halted_threads');
 		if (t == undefined) t = [];
@@ -291,15 +295,25 @@ exports.run = {
 		const command = args.shift();
 		const cargs = args;
 
-		ctx.channel.send(`Will run \`${command}: ${cargs}\` ${mode} ${target}`);
-
 		if (mode == "as"){
 			const m = ctx.findMember(target);
 			var n = await ctx.newCtx(ctx.message);
+			n.args = cargs;
+			n.argsRaw = cargs.join(" ");
 			n.member = m;
-			await n.invoke(command, cargs);
+			n.author = m.user;
+
+			ctx.channel.send(`Will run \`${command} [${n.argsRaw}]\` ${mode} ${m}`);
+
+			await n.invoke(command);
 		}else if ( mode == "in" ){
-			
+			const m = ctx.findChannel(target);
+			var n = await ctx.newCtx(ctx.message);
+						n.args = cargs;
+			n.argsRaw = cargs.join(" ");
+			n.channel = m;
+			ctx.channel.send(`Will run \`${command} [${n.argsRaw}]\` ${mode} ${m}`);
+			await n.invoke(command);			
 		}
 	}
 };
@@ -311,6 +325,15 @@ exports.debug = {
 	execute: async function(ctx) {
 		let args = ctx.args;
 		ctx.channel.send(`${ctx.member}\n${args}`);
+	}
+};
+
+exports.echo = {
+	help: "I repeat, echo.",
+	group: "admin",
+	flags: ['$hidden'],
+	execute: async function(ctx) {
+		ctx.channel.send(ctx.argsRaw);
 	}
 };
 
@@ -411,6 +434,8 @@ exports.help = {
 					}
 				}
 			}
+
+			
 			if (target == undefined){
 				ctx.channel.send(`Command ${args[0]} not found.`);
 			}else{
@@ -454,10 +479,18 @@ exports.help = {
 
 			}
 			var h = "";
+			let commands = 0;
 
 			for (const group of Object.keys(sorts)){
 				h += "["+group+"]\n";
 				for (const command of sorts[group]){
+					commands += 1;
+
+					if (commands > 25){
+						commands = 0;
+						ctx.channel.send(common.code(h, 'ini'));
+						h = "";
+					}
 					h += "  "+command.name+common.space("  "+command.name, 20, command.brief)+"\n";
 				}
 			}
