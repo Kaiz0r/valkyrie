@@ -1,4 +1,4 @@
-*.js~
+*~
 config.json
 gateway.json
 node_modules/
