@@ -1,0 +1,5 @@
+set name to Valkyrie
+
+include golem_deusex.golem
+
+!finalize

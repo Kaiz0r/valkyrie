@@ -174,6 +174,10 @@ Ctx.prototype.say = function(msg){
 	this.channel.send(msg);
 };
 
+Ctx.prototype.send = function(msg){
+	this.channel.send(msg);
+};
+
 Ctx.prototype.code = function(msg, code){
 	this.channel.send(`\`\`\`${code}\n${msg}\n\`\`\``);
 };

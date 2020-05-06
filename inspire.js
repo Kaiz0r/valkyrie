@@ -1,38 +1,236 @@
 const fs = require('fs');
+var Classifier = require( 'wink-naive-bayes-text-classifier' );
+var nlp = require( 'wink-nlp-utils' );
+var ner = require( 'wink-ner' );
+var winkTokenizer = require( 'wink-tokenizer' );
 
 exports.Persona = function(){
 	this.mood = 0;
 	this.stress = 0;
 };
 
-exports.Persona.increaseMood = function(incr){
+exports.Persona.prototype.increaseMood = function(incr){
 	this.mood += incr;
 	if (this.mood > 100){this.mood = 100;}
 };
 
-exports.Persona.decreaseMood = function(incr){
+exports.Persona.prototype.decreaseMood = function(incr){
 	this.mood -= incr;
 	if (this.mood < 100){this.mood = 100;}
 };
 
-exports.Persona.increaseStress = function(incr){
+exports.Persona.prototype.increaseStress = function(incr){
 	this.stress += incr;
 	if (this.mood > 10){this.mood = 10;}
 };
 
-exports.Persona.decreaseStress = function(incr){
+exports.Persona.prototype.decreaseStress = function(incr){
 	this.stress -= incr;
 	if (this.stress < -10){this.stress = -10;}
 };
 
-exports.Persona.evaluate = function(){
+exports.Persona.prototype.evaluateEmotion = function(){};
+
+exports.Golem = function(){
+	this.commands = {};
+	this.flags = {};
+	this.setVar("debug", "true");
+	this.output = function(message){console.log(this.handleVariables(message));};
+	this.error = function(message){console.log("ERROR: "+message);};
+	this.debug = function(message){if(this.flags.debug != "true") return; console.log("DEBUG: "+message);};
+	this.fallback = function(g, message){g.output(message);};
 	
+	this.commands["set"] = function(g, message){
+		if (message.includes("to")){
+			let m = message.split(" to ");
+			let key = m.shift();
+			let val = m.join(" ");
+			g.flags[key] = val;
+		}else if(!message.includes(" = ")){
+			let m = message.split(" = ");
+			let key = m.shift();
+			let val = m.join(" ");
+			g.flags[key] = val;
+		}else{return;}
+	};
+
+	this.commands["echo"] = function(g, message){
+		g.output(message);
+	};
+	this.commands["include"] = function(g, message){
+		g.parseFile(message);
+	};
 };
 
-exports.Inspiration = function(){
+exports.Golem.prototype.setVar = function(key, value){
+	this.flags[key] = value.toString();
+};
+
+exports.Golem.prototype.addCommand = function(name, callback){
+	this.commands[name] = callback;
+};
+
+exports.Golem.prototype.handleVariables = function(input){
+	let out = [];
+	const clean = function(i){
+		let out = i;
+		const invalid = [',', '.', '!', '?'];
+		for (const o of invalid){
+			if(out.endsWith(o)){out = out.replace(o,'' );}
+		}
+		return out;
+	};
+	for (const partp of input.split(" ")){
+		const part = clean(partp);
+		if(part.startsWith("$")){
+			if(this.flags[part.replace("$", "")] != undefined){
+				out.push(part.replace(part, this.flags[part.replace("$", "")]));
+			}else{
+				out.push(part);
+			}
+		}else{out.push(part);}
+	}
+	return out.join(" ");
+};
+
+exports.Golem.prototype.parse = function(input){
+	if(input == ""){return;}
+	this.debug("Parsing "+input);
+	if(input.includes(":::")){
+		for (const part of input.split(":::")){
+			this.parse(part);
+		}
+		
+	}else{
+		let c = input.split(" ");
+		let command = c.shift();
+		let message = this.handleVariables(c.join(" "));
+		if(this.commands[command] != undefined){this.commands[command](this, message);}else{this.fallback(this, command+" "+message);}
+	}
+};
+
+exports.Golem.prototype.parseFile = function(path){
+	let atEnd = [];
+	let rawdata = fs.readFileSync(path);
+	let lines = rawdata.toString().split("\n");
+	for (const line of lines){
+		if(line.startsWith("& ")){
+			atEnd.push(line.replace("& ", ''));
+		}else{this.parse(line);}
+	}
+	this.debug("ATEND "+atEnd);
+	let u = [...new Set(atEnd)];
+	for(const l of u){
+		this.parse(l);
+	}
+};
+
+exports.SessionManager = function(){
+	this.sessions = {};
+};
+exports.SessionManager.prototype.get = function(name){
+	if(this.sessions[name] == undefined){
+		console.log("New session created for "+name);
+		this.sessions[name] = {};
+	}
+
+	return this.sessions[name];
+};
+
+exports.Inspire = function(name = "Golem"){
+	// SETTINGS
+	this.bot_name = function(){return this.golem.flags["name"];};
+	this.name = function(){return this.golem.flags["name"];};;
+	this.silentOnFail = true;
+	this.vdebug = true;
+
+	// CALLS
 	this.persona = new exports.Persona();
+	this.golem = new exports.Golem();
+	this.golem.flags["name"] = name;
+	this.sessions = new exports.SessionManager();
+	this.golem.inspiration = this;
+	this.golem.ner = ner();
+	
+	this.golem.tokenize = winkTokenizer().tokenize;
+	this.golem.nbc = Classifier();
+	this.golem.nbc.definePrepTasks( [nlp.string.tokenize0, nlp.tokens.removeWords, nlp.tokens.stem] );
+	this.golem.nbc.defineConfig( { considerOnlyPresence: true, smoothingFactor: 0.5 } );
+
+	this.golem.replies = {};
+	this.golem.fallback = function(g, message){g.output("Not understood.");};
+
+	//Teach is a reply for an intent
+	// reply helphx I see you need help with HX.
+	//       ^ name ^ response
+	// Adds to object of responses for input to check against
+	this.golem.addCommand("reply", function(g, message){ 
+		let n = message.split(" ");
+		const subject = n.shift();
+		const m = n.join(" ");
+		g.debug(g.inspiration.bot_name()+": new reply: "+subject+" | "+m);
+		g.replies[subject] = m; 
+	});
+
+	//Add training data for named entity recognition
+	// train deus ex | game | deusex
+	//       ^ text    ^ type ^ ID (optional)
+	this.golem.addCommand("train", function(g, message){
+		g.debug(g.inspiration.bot_name+" will train: "+message);
+	});
+	
+	this.golem.addCommand("get", function(g, message){
+		let intent = g.nbc.predict(message);
+		g.debug(intent);
+		if (g.replies[intent] != undefined){
+			g.output(g.handleVariables(g.replies[intent]));
+		}
+	});
+
+	this.golem.addCommand("!finalize", function(g, message){
+		g.debug("Finalizing...");
+		g.nbc.consolidate();
+	});
+	
+	this.golem.addCommand("understand", function(g, message){
+		g.debug("Attempting to understand: "+message);
+		let p = message.split();
+		let sender_id = message.split("from_input|")[1].split("|")[0];
+		let msg = message.replace(`from_input|${sender_id}| `, '');
+		msg = msg.replace(`from_input|${sender_id}|`, '');
+		let session = g.inspiration.sessions.get(sender_id);
+		g.parse(`get ${msg}`);
+	});
+	
+	//Feeds a learning statement for a subject
+	// learn helphx I need help with HX
+	//       ^ name ^ example input
+	this.golem.addCommand("learn", function(g, message){
+		let n = message.split(" ");
+		const subject = n.shift();
+		const m = n.join(" ");
+		g.debug("LEARN: "+subject+" | "+m);
+		g.nbc.learn( m, subject );
+	});
 };
 
+exports.Inspire.prototype.tokenize = function(input){
+	var tokens = this.golem.tokenize( input );
+	return this.golem.ner.recognize( tokens );
+};
+
+// Feed it a golem readable file which will run through and learn a default dataset
+exports.Inspire.prototype.loadDataset = function(path){
+	this.golem.parseFile(path);
+};
+
+exports.Inspire.prototype.cleanSessionName = function(n){
+	return n.replace(" ", "");
+};
+
+exports.Inspire.prototype.message = function(sender_id, input){
+	this.golem.parse(`understand from_input|${this.cleanSessionName(sender_id)}| ${input}`);
+};
 
 
 exports.Markov = function(){

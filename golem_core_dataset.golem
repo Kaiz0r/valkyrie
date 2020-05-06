@@ -1,0 +1,11 @@
+set name to Valkyrie
+set botmaster to Kaiser
+
+include golem_deusex.golem
+include g_ext.golem
+
+learn whoisme Who is $name
+reply whoisme I am $name.
+
+
+& !finalize

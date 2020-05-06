@@ -2,9 +2,9 @@ var common = require('../common.js');
 const print = common.print;
 const util = require('util');
 const discord = require('discord.js');
-
+const vmsq = require('vmsq');
 const Gamedig = require('gamedig');
-
+const fs = require("fs");
 const luaState = require('lua-in-js');
 const luaEnv = luaState.createEnv();
 var needle = require('needle');
@@ -39,6 +39,64 @@ exports.updateRecruits = {
 					
 				}
 			}}}};
+
+exports.inspire = {
+	help: "Interface for the INSPIRE3 engine.",
+	aliases: ['i'],
+	group: "utility",
+	usage: "[message]",
+	flags: ["$hidden"],
+	execute: async function(ctx){
+		ctx.client.inspire.golem.output = function(m){ctx.say(m);};
+		ctx.client.inspire.message(ctx.author.username, ctx.argsRaw);
+	}
+};
+
+exports.dswrite = {
+	help: "Writes a new line in dataset file for the INSPIRE3 engine.",
+	aliases: ['dsw'],
+	group: "utility",
+	usage: "[message]",
+	flags: ["$hidden", "$owner"],
+	execute: async function(ctx){
+		let all = ctx.args;
+		let f = all.shift();
+		let msg = all.join(" ");
+		let rawdata = fs.readFileSync(f+".golem");
+		let lines = rawdata.toString().split("\n");
+		lines.push(msg);
+		fs.writeFile(f+".golem", lines.join("\n"), (err) => {
+			if (err) throw err;
+			console.log('Data written to file');
+		});
+	}
+};
+
+exports.itag = {
+	help: "Grabs a response from the I3 engine.",
+	aliases: ['tag'],
+	group: "utility",
+	usage: "[key]",
+	flags: ["$hidden"],
+	execute: async function(ctx){
+		let g = ctx.client.inspire.golem;
+		if (g.replies[ctx.args[0]] != undefined){
+			ctx.say(g.handleVariables(g.replies[ctx.args[0]]));
+			}
+	}
+};
+
+exports.golem = {
+	help: "Interface for the GOLEM backend for INSPIRE3.",
+	aliases: ['g'],
+	group: "utility",
+	usage: "[message]",
+	flags: ["$hidden", "$whitelist"],
+	execute: async function(ctx){
+		ctx.client.inspire.golem.output = function(m){ctx.say(m);};
+		ctx.client.inspire.golem.parse(ctx.argsRaw);
+	}
+};
 
 exports.thread = {
 	help: "Thread manager",
@@ -125,12 +183,19 @@ exports.whois = {
 	usage: "[IP Address]",
 	execute: async function(ctx) {
 		let args = ctx.args;
+		const em = new discord.MessageEmbed();
 		if (args.length == 0){ctx.channel.send("IP required."); return;}
-		await nc.Whois(args[0], function(data){
-			for (const c of Object.keys(data)){
-				const loc = data[c];
+		needle.get(`https://rest.db.ripe.net/search.json?query-string=${args[0]}&flags=no-filtering&source=RIPE`,function(error, data){
+			for (const c of data.body.objects.object){
+				let m = "";
+				for (const attr of c.attributes.attribute){
+					m += `${attr.name}: ${attr.value}\n`;
+				}
+				
+				em.addField(c["primary-key"].attribute[0].name+" : "+c["primary-key"].attribute[0].value, m);
 
-			}	
+			}
+			ctx.say(em);
 		});
 	
 	}
@@ -550,6 +615,45 @@ exports.gm = {
 		}).catch((error) => {
 			ctx.channel.send("Server is offline");
 		});	
+	}
+};
+
+exports.gms = {
+	help: "Searches for a GMOD server.",
+	group: "gaming",
+	usage: "[term]",
+	aliases: [],
+	execute: async function(ctx) {
+		let name = ctx.argsRaw; // "*"+ctx.argsRaw+"*";
+		let index = 0;
+		let game = "garrysmod";
+		const stream = vmsq('hl2master.steampowered.com:27011', vmsq.EUROPE, {gamedir: game, name_match: name});
+		const servers = [];
+
+		stream.on('error', console.error);
+		stream.on('data', (ip) => {
+			console.log(ip);
+			servers.push(ip);
+		});
+		stream.on('end', () => {
+			console.log(`got ${servers.length} servers`);
+			if(servers.length == 0){ctx.say("No results.");return;}
+			if(index >= servers.length) index = (servers.length - 1);
+			let ip = servers[index];
+			if(ip == undefined){ctx.say(`Bad server index. (0-${servers.length})`);return;}
+			
+			Gamedig.query({type: game, host: ip.split(":")[0], port: ip.split(":")[1]
+						  }).then((state) => {
+							  let resp = ``;
+							  resp += `**Map**: ${state.map}\n`;
+							  resp += `**Version**: ${state.raw.version}\n`;
+							  resp += `**Game**: ${state.raw.game}\n`;
+							  resp += `**Ping**: ${state.ping}\n`;
+							  resp += `**Players**: ${state.raw.numplayers}/${state.maxplayers}\n`;
+							  let em = new discord.MessageEmbed().addField(`${state.name} [${ip}]`, resp);
+							  ctx.say(em);
+						  }).catch((error) => {ctx.say(`Connection to ${ip} failed.\n${error}`);});	
+		});
 	}
 };
 

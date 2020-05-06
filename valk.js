@@ -8,6 +8,7 @@ var colors = require('colors');
 //var commands = require('./commands.js');
 
 var ext = require('./ext.js');
+const inspire = require("./inspire.js");
 
 var cfg = new common.ConfigManager();
 client._config = cfg;
@@ -30,12 +31,27 @@ client.on('ready', () => {
 	cman.reload_ext();
 	cman.reload_threads();
 	client.user.setActivity("Node "+process.version);
+	
+	
+	client.inspire = new inspire.Inspire();
+	client.inspire.golem.addCommand("!restart", function(g, m){
+		client.inspire = new inspire.Inspire();
+		client.inspire.loadDataset("golem_core_dataset.golem");
+	});
+	//i.golem.output = function(m){console.log(i.name()+"> "+m);};
+	client.inspire.loadDataset("golem_core_dataset.golem");
+
+	
 })
 	.on('message', async msg => {
-		//console.log(msg.member.voice);
-		if(!msg.author.bot)
-		print(" [ "+msg.channel.name+" : "+msg.guild.name+" ] "+msg.author.tag+": "+msg.content, tag="say");
-		cman.process_commands(client, cfg, msg);
+		if(!msg.author.bot){
+			print(" [ "+msg.channel.name+" : "+msg.guild.name+" ] "+msg.author.tag+": "+msg.content, tag="say");
+			cman.process_commands(client, cfg, msg);
+
+			if(client.inspire.golem.flags.autoparse == "false") return;
+			client.inspire.golem.output = function(m){console.log("m "+m); if(m != undefined) msg.react("🤖");};
+			client.inspire.message(msg.author.username, msg.content);
+		}
 	})
 	.on('voiceStateUpdate', async function(before, after){
 		if (before.channel == null) return;
@@ -59,6 +75,13 @@ client.on('ready', () => {
 				}
 			}
 		
+		}
+	})
+	.on('messageReactionAdd', async function(reaction, user) {
+		if(user.bot) return;
+		if(reaction.emoji.name == "📱" || reaction.emoji.name == "🤖"){
+			client.inspire.golem.output = function(m){reaction.message.reply(m);};
+			client.inspire.message(reaction.message.author.username, reaction.message.content);
 		}
 	})
 	.on('disconnect', () => { console.warn('Disconnected!'); })
