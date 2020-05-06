@@ -28,13 +28,14 @@ e.load('dataset.json');
 */
 
 const inspire = require("./inspire.js");
-var i = new inspire.Inspire("Golemy");
+var i = new inspire.Inspire();
 i.golem.output = function(m){console.log(i.name()+"> "+m);};
 i.loadDataset("golem_core_dataset.golem");
 //i.message("Kaiser", "i need help with HX mod");
 //i.message("Kaiser", "is kenties any good, im looking for a new launcher");
 //i.message("Kaiser", "i need help, hx crashes");
-i.message("Kaiser", "who is valkyrie");
+i.message("Kaiser", "how do i host a server");
+
 /*i.message("Kaiser", "set f to tvar:::set t to fvar");
 i.message("Kaiser", "echo the value of `f` is $f");
 i.message("Kaiser", "learn x is a dude");

@@ -2,12 +2,36 @@ learn hxhelp I need help with HX
 learn hxhelp HX doesnt work
 learn hxhelp i need help for HX
 learn hxhelp i need help with coop mod
-reply hxhelp I see you need help with HX?
+reply hxhelp I see you need help with HX?#--
+#nCommon troubleshooting tips:
+#n#t-> Install on a clear game directory, with no other mods installed.
+#n#t-> Run from HX.exe, **NOT** DeusEx.exe.
+#n#t-> Try reinstalling, or deleting HX.ini and HXUser.ini to reload config files.
+#n#t-> If all else fails, ask Nah or Kaiser, or anyone else around for more help.
+--#
 
 learn hxinfo Is HX feature complete?
 learn hxinfo Is HX completable?
 learn hxinfo Does HX work?
-reply hxinfo You would like to know if HX works?
+reply hxinfo HX is fully function all the way through.
+
+learn server How to host server?
+learn server How to host deus ex server?
+learn server How to host dxmp?
+learn server How to host dxmp server?
+learn server How to host for deus ex?
+learn server How do i host a server?
+learn server How do i host a deus ex server?
+learn server How do i host for dxmp?
+learn server How do i host a dxmp server?
+learn server How do i host for deus ex?
+reply server To host a DXMP server;#--
+#nFrom the Server Browser, click Host.
+#nFor a base install, make sure to edit DeusEx.ini, and replace all instances of "master0.gamespy.com" with "master.333networks.com".
+#nPort forwarding is also required, usually. By default, make sure 7790 to 7792 and 28900 are open.
+#nSpecific instructions are unavailable due to the fact that every router is different.
+#nBut, vague instruction is; open your routers IP address in a web browser, log in there, and browse the settings until something like Port Forwarding shows up.
+--#
 
 learn launchers I am having trouble with kenties
 learn launchers Is kenties good?

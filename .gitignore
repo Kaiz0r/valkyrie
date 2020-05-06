@@ -3,6 +3,5 @@ config.json
 gateway.json
 node_modules/
 node_modules/*
-Pantheon-OLD/
-Pantheon-OLD/*
 pantheon.js
+.eslint*

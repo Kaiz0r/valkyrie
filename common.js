@@ -30,6 +30,18 @@ String.prototype.lower = function() { return this.toLowerCase(); };
 String.prototype.toNumber = function() { return Number(this); };
 String.prototype.asTime = function() { return Number(this).asTime(); };
 String.prototype.stripAll = function(alternate = "") {return this.replace(/(\r\n\t|\n|\r\t)/gm, alternate);};
+String.prototype.replaceAll = function(searchStr, replaceStr) {
+	var str = this;
+
+    // no match exists in string?
+    if(str.indexOf(searchStr) === -1) {
+        // return string
+        return str;
+    }
+
+    // replace and remove first match, and do another recursirve search/replace
+    return (str.replace(searchStr, replaceStr)).replaceAll(searchStr, replaceStr);
+}
 Number.prototype.zp = function(n) { return this.toString().zp(n); };
 Number.prototype.truncate = function(n){return Math.round(this * Math.pow(10, n)) / Math.pow(10, n);};
 Number.prototype.as = function(def){ if (this == 0){return def;}else{return this;};};

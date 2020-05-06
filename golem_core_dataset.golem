@@ -1,11 +1,16 @@
 set name to Valkyrie
 set botmaster to Kaiser
+set autoparse to false
+set debug to false
 
 include golem_deusex.golem
 include g_ext.golem
 
 learn whoisme Who is $name
-reply whoisme I am $name.
+reply whoisme I am $name. #--
+#nI am a robot.
+--#
+
 
 
 & !finalize

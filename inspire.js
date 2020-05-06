@@ -3,6 +3,7 @@ var Classifier = require( 'wink-naive-bayes-text-classifier' );
 var nlp = require( 'wink-nlp-utils' );
 var ner = require( 'wink-ner' );
 var winkTokenizer = require( 'wink-tokenizer' );
+var common = require('./common.js');
 
 exports.Persona = function(){
 	this.mood = 0;
@@ -72,16 +73,23 @@ exports.Golem.prototype.addCommand = function(name, callback){
 
 exports.Golem.prototype.handleVariables = function(input){
 	let out = [];
-	const clean = function(i){
+	const clean = function(g, i){
 		let out = i;
+		let invFound = "";
 		const invalid = [',', '.', '!', '?'];
+		
 		for (const o of invalid){
-			if(out.endsWith(o)){out = out.replace(o,'' );}
+			if(out.endsWith(o)){out = out.replace(o,'');invFound = o;}
 		}
-		return out;
+		
+		if(out.startsWith("$") && g.flags[out.replace("$", "")] != undefined){
+				out = g.flags[out.replace("$", "")];
+		}
+		return out+invFound;
 	};
+	
 	for (const partp of input.split(" ")){
-		const part = clean(partp);
+		const part = clean(this, partp);
 		if(part.startsWith("$")){
 			if(this.flags[part.replace("$", "")] != undefined){
 				out.push(part.replace(part, this.flags[part.replace("$", "")]));
@@ -111,14 +119,35 @@ exports.Golem.prototype.parse = function(input){
 
 exports.Golem.prototype.parseFile = function(path){
 	let atEnd = [];
+	let cont = [];
+	let doContinue = false;
 	let rawdata = fs.readFileSync(path);
 	let lines = rawdata.toString().split("\n");
+	
 	for (const line of lines){
-		if(line.startsWith("& ")){
+		if(doContinue){
+			if(line == "--#"){
+				doContinue = false;
+				this.parse(cont.join(" ").replaceAll("#n", "\n").replaceAll("#t", '\t'));
+				console.log("Ending continue: "+cont.join(" ").replace("#n", "\n").replace("#t", '\t'));
+			}
+			else{
+				if(line.startsWith("#@ ")){
+					this.parse(line.replace("#@ ", ''));
+				}else cont.push(line);
+			}
+		}else if(line.startsWith("& ")){
 			atEnd.push(line.replace("& ", ''));
-		}else{this.parse(line);}
+		}else{
+			if(line.endsWith("#--")){
+				cont = [line.slice(0, -3)];
+				doContinue = true;
+			}else{
+				this.parse(line);
+			}
+		}
 	}
-	this.debug("ATEND "+atEnd);
+
 	let u = [...new Set(atEnd)];
 	for(const l of u){
 		this.parse(l);
@@ -180,6 +209,7 @@ exports.Inspire = function(name = "Golem"){
 	});
 	
 	this.golem.addCommand("get", function(g, message){
+		g.debug(message);
 		let intent = g.nbc.predict(message);
 		g.debug(intent);
 		if (g.replies[intent] != undefined){

@@ -14,5 +14,10 @@
     "wink-ner": "^2.1.0",
     "ytdl-core": "^2.0.1",
     "ytsr": "^0.1.11"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-strongloop": "^2.1.0"
   }
 }
