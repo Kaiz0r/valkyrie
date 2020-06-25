@@ -39,6 +39,9 @@ exports.disconnect = {
 	group: "audio",
 	aliases: ['dc'],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that."); return;
+		}
 		await ctx.cleanup_voice(ctx);
 	}
 };
@@ -77,6 +80,9 @@ exports.stop = {
 	group: "audio",
 	aliases: [],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that."); return;
+		}
 		var vc = await ctx.vm.getClient(ctx);
 		vc.dispatcher.emit('quit');
 	}
@@ -87,6 +93,9 @@ exports.skip = {
 	group: "audio",
 	aliases: [],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that."); return;
+		}
 		var vc = await ctx.vm.getClient(ctx);
 		vc.dispatcher.emit('finish');
 	}
@@ -98,6 +107,9 @@ exports.volume = {
 	aliases: [],
 	usage: "[Number: 0-100]",
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that."); return;
+		}
 		let args = ctx.args;
 		var vc = await ctx.vm.getClient(ctx);
 		const vol = Number(args[0]);
@@ -110,6 +122,9 @@ exports.pause = {
 	group: "audio",
 	aliases: [],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that."); return;
+		}
 		var vc = await ctx.vm.getClient(ctx);
 		if (vc.dispatcher.paused){
 			vc.dispatcher.resume();
@@ -136,6 +151,9 @@ exports.station = {
 	group: "audio",
 	aliases: ['st'],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that."); return;
+		}
 		let args = ctx.args;
 		args = args.join(" ");
 
@@ -144,7 +162,7 @@ exports.station = {
 			const channels = ctx.cfg.get('radio');
 			if (channels[args] != undefined){
 				const c = channels[args];
-				await ctx.play({"stream": c.url, "title": c.name, "user": ctx.member, "length": "∞", "lengthParsed": "∞"});	
+				await ctx.play({"stream": c["url"], "title": c.name, "user": ctx.member, "length": "∞", "lengthParsed": "∞"});	
 			}else{
 				ctx.channel.send("Station not found.");
 			}
@@ -322,7 +340,7 @@ exports.vcclr = {
 	}
 };
 
-function filterResults(ctx, data){ //to try again
+function filterResults(ctx, data){
 	//const filters = ['official video', 'full album'];
 	const filters = ctx.cfg.get('audio_search_filters', ['official video', 'full album']);
 	for (const t of data){
@@ -343,15 +361,38 @@ function filterResults(ctx, data){ //to try again
 	return undefined;
 }
 
+exports.vclock = {
+	help: "Locks permissions to play in channel.",
+	group: "audio",
+	aliases: ['vcl'],
+	execute: async function(ctx) {
+		let r = await ctx.setVCLock(ctx.member);
+
+		if (r == 0){
+			ctx.reply("Voice unlocked.");
+		} else if (r == 1){
+			ctx.reply("Voice locked.");
+		} else if (r == 2){
+			ctx.reply("You don't have permission.");
+		} else if (r == 3){
+			ctx.reply("No voice client connected.");
+		} 
+	}
+};
+
 exports.play = {
 	help: "Plays audio to the current voice channel.",
 	group: "audio",
 	aliases: ['p'],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that.");
+			return;
+		}
 		let args = ctx.args;
 		args = args.join(" ");
 		let first = false;
-		if (args.includes("-first")){
+		if (args.includes("--first")){
 			first = true;
 			args = args.replace("--first", '');
 		}
@@ -361,6 +402,7 @@ exports.play = {
 			};
 
 			ytsr(args, options, function(err, searchResults) {
+				console.log(searchResults);
 				if(err) throw err;
 				let url = "";
 				if(!first)
@@ -374,7 +416,7 @@ exports.play = {
 					
 					let lenh = len.asTime();
 					let stream = info["formats"][0]["url"]; //change to cycle through formats and find one thats mimeType: audio/xxxxx
-					await ctx.play({"stream": stream, "title": title, "user": ctx.member, "length": len, "lengthParsed": lenh});	
+					await ctx.play({"stream": stream, "title": title, "user": ctx.member, "watchPage": url, "length": len, "lengthParsed": lenh});	
 							
 				});
 			});	
@@ -387,6 +429,10 @@ exports.playfile = {
 	group: "audio",
 	aliases: ['pf'],
 	execute: async function(ctx) {
+		if (!ctx.getVCLock()){
+			ctx.reply("You don't have permission for that.");
+			return;
+		}
 		let args = ctx.args;
 		args = args.join(" ");
 

@@ -13,33 +13,6 @@ const checks = require('../checks.js');
 const nc = require('../netcrawler.js');
 const querystring = require('querystring');
 
-exports.updateRecruits = {
-	auto: async function(client){
-		console.log("Updating Recruit monitor...");
-		let record = client._config.get('recruit_records');
-		if (record == undefined) {record = [];}
-
-		for (const g of client.guilds.cache){
-			let guild = g[1];
-											  
-			if (guild.id == "396716931962503169"){
-				const channel = guild.channels.cache.find(ch => ch.name === 'botmasters-testzone');
-				const recruit = guild.roles.cache.find(ch => ch.name === 'recruit');
-				
-				for (const m of guild.members.cache){
-					let member = m[1];
-					if(member.roles.cache.array().includes(recruit)){
-						console.log(member.user.username);
-						if (!record.includes(member.id) && member.presence.status != "offline"){
-							channel.send(`monitor: ${member.user.username} has been seen.`);
-							record.push(member.id);
-							client._config.set('recruit_records', record);
-						}
-					}
-					
-				}
-			}}}};
-
 exports.inspire = {
 	help: "Interface for the INSPIRE3 engine.",
 	aliases: ['i'],
