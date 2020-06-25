@@ -54,6 +54,26 @@ Number.prototype.asTime = function(){
 	return `${minutes}:${seconds}`;
 };
 
+exports.ProgressBar = function() {
+	this.current = 0;
+	this.limit = 10;
+};
+
+exports.ProgressBar.prototype.update = function(value){
+	this.current = value;
+	const pointer = (this.limit * (this.current / 100.0));
+	const empty = Math.round(this.limit - pointer);
+
+	return "◻".repeat(pointer)+"◼".repeat(empty);
+};
+
+exports.ProgressBar.prototype.show = function(){
+	const pointer = (this.limit * (this.current / 100.0));
+	const empty = Math.round(this.limit - pointer);
+
+	return "◻".repeat(pointer)+"◼".repeat(empty);
+};
+
 exports.defaultNum = function(value){
 	if(value == undefined) return 0;
 	return value;

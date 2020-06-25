@@ -1,6 +1,7 @@
 const fs = require('fs');
 var common = require('./common.js');
 const moment = require('moment');
+const ytdl = require('ytdl-core-discord');
 
 function nocache(module) {
 	require("fs").watchFile(require("path").resolve(module), () => {delete require.cache[require.resolve(module)];});
@@ -62,7 +63,7 @@ Ctx.prototype.newCtx = async function(msg){
 	return ctx;
 };
 
-exports.rand = function(intn) { return Math.floor((Math.random() * int) + 1); };
+exports.rand = function(intn) { return Math.floor((Math.random() * intn) + 1); };
 
 
 function VoiceManager(){};
@@ -74,6 +75,7 @@ function Voice(ctx){
 	this.currently_playing = "";
 	this.connection = null;
 	this.dispatcher = null;
+	this.owner = null;
 }
 
 VoiceManager.prototype.getClient = async function(ctx){
@@ -81,6 +83,20 @@ VoiceManager.prototype.getClient = async function(ctx){
 		this[ctx.guild.id] = new Voice(ctx);
 	}
 	return this[ctx.guild.id];
+};
+
+VoiceManager.prototype.getClientSync = function(ctx){
+	if (this[ctx.guild.id] == undefined) {
+		this[ctx.guild.id] = new Voice(ctx);
+	}
+	return this[ctx.guild.id];
+};
+
+VoiceManager.prototype.hasClient = function(ctx){
+	if (this[ctx.guild.id] == undefined) {
+		return false;
+	}
+	return true;
 };
 
 VoiceManager.prototype.cleanup = async function(ctx){
@@ -111,10 +127,40 @@ Ctx.prototype.cleanup_voice = async function(input, title){
 	vm.cleanup(this);
 };
 
+Ctx.prototype.setVCLock = async function(user){
+	var vc = await vm.getClient(this);
+	if (!vm.hasClient) return 3;
+	
+	if (vc.owner){
+		if(vc.owner != user.id){
+			console.log(vc.owner);
+			return 2;
+		}
+		vc.owner = null;
+		console.log(vc.owner);
+		return 0;
+	}
+	vc.owner = user.id;
+	console.log(vc.owner);
+	return 1;
+};
+
+Ctx.prototype.getVCLock = function(){
+	var vc = vm.getClientSync(this);
+	if(!vm.hasClient(this)) return false;
+	console.log((vc.owner && this.member.id == vc.owner));
+	if (!vc.owner) return true;
+	if (this.member.id == vc.owner) return true;
+	return false;
+};
+
 Ctx.prototype.play = async function(data){
 	//var vc = await vm.getClient(this);
 	var vc = await vm.getClient(this);
-
+	/*if (vc.owner != undefined && data.user.id != vc.owner){
+		this.channel.send("You do not have permission to do that.");
+		return;
+	}*/
 	let title = data.title;
 	const input = data.stream;
 	
@@ -126,11 +172,14 @@ Ctx.prototype.play = async function(data){
 
 	vc.connection = await this.connect_voice();
 
-	vc.dispatcher = vc.connection.play(input);
+	if (data.watchPage)
+		vc.dispatcher = vc.connection.play(await ytdl(data.watchPage), { type: 'opus' });
+	else
+		vc.dispatcher = vc.connection.play(data.stream);
 	
 	vc.dispatcher.on('start', () => {
 		let name = "";
-		if (data.user.nickname == undefined){name = data.user.nickname;}else{name = data.user.user.username;}
+		if (data.user.nickname != undefined){name = data.user.nickname;}else{name = data.user.user.username;}
 
 		const cleanSongTitle = function(ctx, title){
 			var mcfg = ctx.cfg.get("audio_search_clean", []);
