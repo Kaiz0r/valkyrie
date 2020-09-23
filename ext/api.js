@@ -28,8 +28,10 @@ exports.tri = {
 			needle.get(url+ctx.argsRaw, function(error, response) {
 				const embed = new discord.MessageEmbed();
 				if (!error && response.statusCode == 200){
+					var i = 0;
 					for (const server of response.body[0]){
 						embed.addField(`[${server.country}] ${server.hostname} (${server.numplayers}/${server.maxplayers})`, `**Map**: ${server.mapname} (${server.maptitle})\n**Game**: ${server.gametype}\n**Address**: ${server.ip}:${server.hostport}`);
+						if (i == 10) break;
 					}
 
 					embed.addField("Results", `Game: ${ctx.argsRaw.lower()}\nServers: ${response.body[1].total}\nPlayers: ${response.body[1].players}`);
