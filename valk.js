@@ -1,31 +1,37 @@
 const Discord = require('discord.js');
-const client = new Discord.Client();
+const inspire = require('./inspire.js');
 var common = require('./common.js');
-const print = common.print;
+var emoji = require('node-emoji');
 var colors = require('colors');
 var ext = require('./ext.js');
-const inspire = require('./inspire.js');
+
+const client = new Discord.Client();
 var cfg = new common.ConfigManager();
 client._config = cfg;
 const prefix = cfg.get('prefix', '$');
 const token = cfg.get('token');
-var cman = new ext.ExtManager(client, prefix);
-var emoji = require('node-emoji');
+var com = new ext.ExtManager(client, prefix);
+const emoji_down = emoji.get(":arrow_down:");
+const emoji_up = emoji.get(":arrow_up:");
+const emoji_star = emoji.get(":star:");
+const print = common.print;
+var last_channel = undefined;
 
 // WOW server
 // https://github.com/AshamaneProject/AshamaneCore/blob/7e448fe1766106f37c9c59814c72ac40f1abd478/contrib/ServerRelay/server.js
 process.on('unhandledRejection', (error) => console.error('Uncaught Promise Rejection', error));
+process.on('uncaughtException', function(err) {
+	console.log('Caught exception: ' + err);
+	if (last_channel != undefined) last_channel.send(`Unhandled Error: ${err}`);
+});
 client.on("disconnected", function () { process.exit(1); });
-
 client.on('ready', () => {
 	print('Running Node '.rainbow+process.version.rainbow, tag='info');
 	print(`Logged in as ${client.user.tag}!`, tag='info');
 	print('Loaded prefix: `'+prefix+'`', tag='info');
-
-	cman.reload_ext();
-	cman.reload_threads();
+	com.reload_ext();
+	com.reload_threads();
 	client.user.setActivity('Node '+process.version);
-
 
 	//INSPIRE_FRAMEWORK
 	client.inspire = new inspire.Inspire();
@@ -33,7 +39,6 @@ client.on('ready', () => {
 		client.inspire = new inspire.Inspire();
 		client.inspire.loadDataset('golem_core_dataset.golem');
 	});
-
 	client.inspire.loadDataset('golem_core_dataset.golem');
 
 	//WOW_SERVER
@@ -45,8 +50,9 @@ client.on('ready', () => {
 })
     .on('message', async (msg) => {
 		if (!msg.author.bot) {
+			last_channel = msg.channel;
 			print(' [ '+msg.channel.name+' : '+msg.guild.name+' ] '+msg.author.tag+': '+msg.content, tag='say');
-			cman.process_commands(client, cfg, msg);
+			com.process_commands(client, cfg, msg);
 
 			if (msg.content.startsWith("+") && !msg.content.includes(" ") && cfg.get("ruqqus_autocomplete", "true") == "true"){
 				msg.channel.send(`https://ruqqus.com/${msg.content}`);
@@ -64,12 +70,9 @@ client.on('ready', () => {
     .on('voiceStateUpdate', async function(before, after) {
       if (before.channel == null) return;
       if (before.member.id == client.user.id) return;
-
-      if (before.channel.members.array().length == 1) {
-        await before.channel.leave();
-      }
+      if (before.channel.members.array().length == 1) {await before.channel.leave();}
     })
-    .on('presenceUpdate', async function(before, after) {
+    /*.on('presenceUpdate', async function(before, after) {
       if (after.member.guild.id == '396716931962503169') {
         const r = client._config.get('recruit_records');
         const channel = after.member.guild.channels.cache.find((ch) => ch.name === 'botmasters-testzone');
@@ -83,7 +86,7 @@ client.on('ready', () => {
           }
         }
       }
-    })
+    })*/
     .on('messageReactionAdd', async function(reaction, user) {
 		if (user.bot) return;
 
@@ -95,15 +98,14 @@ client.on('ready', () => {
 			client.inspire.message(reaction.message.author.username, reaction.message.content);
 		}
     })
-    .on('disconnect', () => {
-        process.exit(1); 
+    .on('messageReactionRemove', async function(reaction, user) {
+		if (user.bot) return;
+
+
     })
-    .on('disconnected', () => {
-        process.exit(1); 
-    })
-    .on('reconnecting', () => {
-      console.warn('Reconnecting...');
-    })
+    .on('disconnect', () => {process.exit(1);})
+    .on('disconnected', () => {process.exit(1);})
+    .on('reconnecting', () => {console.warn('Reconnecting...');})
     .on('error', console.error)
     .on('warn', console.warn);
 
@@ -144,8 +146,6 @@ function OnWorldMessage(request, response) {
         response.end();
     }
 }
-
- 
 function OnDiscordMessage() {
     client.on('message', async message => {
         if (message.author.bot) return;
@@ -184,8 +184,6 @@ function OnDiscordMessage() {
         };
     });
 };
-
-
 //END_WOW_SERVER
 
 
