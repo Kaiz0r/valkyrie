@@ -30,8 +30,11 @@ exports.tri = {
 				if (!error && response.statusCode == 200){
 					var i = 0;
 					for (const server of response.body[0]){
+						console.log(server)
+						
 						embed.addField(`[${server.country}] ${server.hostname} (${server.numplayers}/${server.maxplayers})`, `**Map**: ${server.mapname} (${server.maptitle})\n**Game**: ${server.gametype}\n**Address**: ${server.ip}:${server.hostport}`);
-						if (i == 10) break;
+						i += 1;
+						if (i == 7) break;
 					}
 
 					embed.addField("Results", `Game: ${ctx.argsRaw.lower()}\nServers: ${response.body[1].total}\nPlayers: ${response.body[1].players}`);
