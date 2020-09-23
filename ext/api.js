@@ -25,19 +25,35 @@ exports.tri = {
 				ctx.say(embed);
 			});	
 		}else{ //MS-LIST mode
-			needle.get(url+ctx.argsRaw, function(error, response) {
+			var g = ctx.argsRaw;
+			var page = 0;
+			if (g.includes(";")){
+				page = g.split(";")[1].toNumber();
+				g = g.split(";")[0];
+			}
+			var start = 0;
+			var end = 10;
+			if (page > 0){
+				start = page*10;
+				end = (page+1)*10;
+			}
+			needle.get(url+g, function(error, response) {
 				const embed = new discord.MessageEmbed();
 				if (!error && response.statusCode == 200){
 					var i = 0;
+
+					
 					for (const server of response.body[0]){
-						console.log(server)
-						
-						embed.addField(`[${server.country}] ${server.hostname} (${server.numplayers}/${server.maxplayers})`, `**Map**: ${server.mapname} (${server.maptitle})\n**Game**: ${server.gametype}\n**Address**: ${server.ip}:${server.hostport}`);
+						if (i >= start)
+							embed.addField(`[${server.country}] ${server.hostname} (${server.numplayers}/${server.maxplayers})`,
+									   `**Map**: ${server.mapname} (${server.maptitle})\n**Game**: ${server.gametype}\n**Address**: ${server.ip}:${server.hostport}`);
 						i += 1;
-						if (i == 7) break;
+						if (i == end) break;
 					}
 
-					embed.addField("Results", `Game: ${ctx.argsRaw.lower()}\nServers: ${response.body[1].total}\nPlayers: ${response.body[1].players}`);
+					embed.addField(`Results Page #${page} (${start}-${end})`,
+								   `Game: ${ctx.argsRaw.lower()}\n
+									Servers: ${response.body[1].total}\nPlayers: ${response.body[1].players}`);
 				}else{
 					embed.addField("ERROR", error.toString());
 				}
